@@ -20,6 +20,11 @@ Parallel AI task sessions for developers.
 - REST + SSE between clients and control plane
 - stdin/stdout over platform-native transport between control plane and nodes
 
+## Engineering rules
+
+- **No speculative code.** Every type, function, and export in a PR must have a caller in that same PR. Don't introduce code "for later" — add it in the PR that first uses it.
+- **Verify the dev loop early.** The first PR that adds cross-file imports must prove `pnpm dev` (runtime) and `pnpm build` (type-check) both work. Don't wait until later PRs to discover import resolution or config issues.
+
 ## Git conventions
 
 - Single-line commit messages using [Conventional Commits](https://www.conventionalcommits.org/) (e.g. `feat: add session manager`, `fix: handle missing node ID`)
