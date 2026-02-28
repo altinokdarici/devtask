@@ -1,0 +1,9 @@
+{
+  "name": "devtask",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.30.3",
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}
