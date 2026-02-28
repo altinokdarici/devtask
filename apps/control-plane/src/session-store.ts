@@ -1,6 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import type { Session } from "./types.js";
+import type { Session } from "./types.ts";
 
 const SESSIONS_DIR = path.join(".devtask", "sessions");
 

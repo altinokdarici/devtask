@@ -5,8 +5,8 @@ import {
   type CreateSessionBody,
   SessionNotFoundError,
   InvalidTransitionError,
-} from "./types.js";
-import { saveSession, loadAllSessions } from "./session-store.js";
+} from "./types.ts";
+import { saveSession, loadAllSessions } from "./session-store.ts";
 
 export type SessionEvent =
   | { type: "created"; session: Session }
