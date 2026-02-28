@@ -25,3 +25,5 @@ Parallel AI task sessions for developers.
 - Single-line commit messages using [Conventional Commits](https://www.conventionalcommits.org/) (e.g. `feat: add session manager`, `fix: handle missing node ID`)
 - No AI attribution in commit messages (no co-authored-by, no tool mentions)
 - Prefer small, focused PRs over large ones — stack PRs when needed for better code review experience
+- Every change goes on a feature branch — never commit directly to main
+- Create a PR after pushing the branch
