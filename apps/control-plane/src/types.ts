@@ -33,8 +33,8 @@ export class SessionNotFoundError extends Error {
 }
 
 export class InvalidTransitionError extends Error {
-  constructor(id: string, from: SessionStatus, action: string) {
-    super(`Cannot ${action} session ${id} in status ${from}`);
+  constructor(id: string, from: SessionStatus, to: string) {
+    super(`Cannot transition session ${id} from '${from}' to '${to}'`);
     this.name = "InvalidTransitionError";
   }
 }
