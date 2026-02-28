@@ -11,7 +11,11 @@ Parallel AI task sessions for developers.
 
 ## Tech
 
-- TypeScript, pnpm workspace monorepo
+- TypeScript, pnpm workspace monorepo, fully ESM (`"type": "module"` everywhere)
+- Node 22+ — runs TypeScript natively via `--experimental-strip-types`, no transpile step in dev
+- Dev loop: `pnpm dev` → `node --watch --experimental-strip-types src/index.ts` (auto-restart on save)
+- Production: `pnpm build` → `tsc` for type-checked output, `pnpm start` → `node dist/index.js`
+- No tsx, nodemon, ts-node, or any other runtime — just Node
 - Claude Agent SDK (`@anthropic-ai/claude-agent-sdk`) for agent runtime
 - REST + SSE between clients and control plane
 - stdin/stdout over platform-native transport between control plane and nodes
