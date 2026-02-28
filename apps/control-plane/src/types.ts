@@ -25,6 +25,11 @@ export interface CreateSessionBody {
   maxRetries?: number;
 }
 
+export interface SessionStore {
+  save(session: Session): Promise<void>;
+  loadAll(): Promise<Session[]>;
+}
+
 export class SessionNotFoundError extends Error {
   constructor(id: string) {
     super(`Session not found: ${id}`);

@@ -2,11 +2,11 @@ import crypto from "node:crypto";
 import {
   type Session,
   type SessionStatus,
+  type SessionStore,
   type CreateSessionBody,
   SessionNotFoundError,
   InvalidTransitionError,
 } from "./types.ts";
-import { saveSession, loadAllSessions } from "./session-store.ts";
 
 export type SessionEvent =
   | { type: "created"; session: Session }
@@ -25,9 +25,14 @@ const VALID_TRANSITIONS: Record<string, SessionStatus[]> = {
 export class SessionManager {
   private sessions = new Map<string, Session>();
   private listeners = new Map<string, Set<Listener>>();
+  private store: SessionStore;
+
+  constructor(store: SessionStore) {
+    this.store = store;
+  }
 
   async init(): Promise<void> {
-    const persisted = await loadAllSessions();
+    const persisted = await this.store.loadAll();
     for (const s of persisted) {
       this.sessions.set(s.id, s);
     }
@@ -45,7 +50,7 @@ export class SessionManager {
       updatedAt: now,
     };
     this.sessions.set(session.id, session);
-    await saveSession(session);
+    await this.store.save(session);
     this.emit(session.id, { type: "created", session });
     return session;
   }
@@ -68,7 +73,7 @@ export class SessionManager {
     }
     session.status = to;
     session.updatedAt = new Date().toISOString();
-    await saveSession(session);
+    await this.store.save(session);
     this.emit(id, { type: "updated", session });
     return session;
   }

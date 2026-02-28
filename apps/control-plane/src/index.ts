@@ -1,9 +1,10 @@
 import { Hono } from "hono";
 import { serve } from "@hono/node-server";
 import { SessionManager } from "./session-manager.ts";
+import { createFileStore } from "./session-store.ts";
 import { createRouter } from "./api/router.ts";
 
-const manager = new SessionManager();
+const manager = new SessionManager(createFileStore());
 await manager.init();
 
 const app = new Hono();
