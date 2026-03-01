@@ -21,6 +21,9 @@ importers:
       '@devtask/api-types':
         specifier: workspace:*
         version: link:../../packages/api-types
+      '@devtask/config':
+        specifier: workspace:*
+        version: link:../../packages/config
       '@devtask/protocol':
         specifier: workspace:*
         version: link:../../packages/protocol
@@ -36,6 +39,8 @@ importers:
         version: 25.3.3
 
   packages/api-types: {}
+
+  packages/config: {}
 
   packages/protocol: {}
 
