@@ -1,4 +1,4 @@
-import type { AgentMessage, Command } from "../protocol/messages.ts";
+import type { AgentMessage, Command } from "@devtask/protocol";
 
 export interface NodeConfig {
   sessionId: string;

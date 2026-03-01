@@ -1,7 +1,7 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import crypto from "node:crypto";
-import { encodeLine, createLineParser, decodeLine } from "../protocol/codec.ts";
-import type { AgentMessage } from "../protocol/messages.ts";
+import { encodeLine, createLineParser, decodeLine } from "@devtask/protocol";
+import type { AgentMessage } from "@devtask/protocol";
 import type { NodeProvider, NodeHandle, AgentProcess, NodeConfig } from "./provider.ts";
 
 export function createLocalProvider(command: string, args: string[] = []): NodeProvider {
