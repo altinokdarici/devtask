@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { SessionManager, type SessionEvent } from "./session-manager.ts";
 import { Dispatcher } from "./dispatcher.ts";
 import type { NodeProvider, NodeHandle, AgentProcess } from "./providers/provider.ts";
-import type { AgentMessage, Command } from "./protocol/messages.ts";
+import type { AgentMessage, Command } from "@devtask/protocol";
 import type { SessionStore } from "./types.ts";
 
 function createMemoryStore(): SessionStore {

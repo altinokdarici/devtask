@@ -1,6 +1,6 @@
 import type { SessionManager } from "./session-manager.ts";
 import type { NodeProvider, NodeHandle, AgentProcess } from "./providers/provider.ts";
-import type { Command } from "./protocol/messages.ts";
+import type { Command } from "@devtask/protocol";
 
 interface ActiveSession {
   handle: NodeHandle;

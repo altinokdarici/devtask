@@ -7,7 +7,7 @@ import {
   SessionNotFoundError,
   InvalidTransitionError,
 } from "./types.ts";
-import type { AgentMessage } from "./protocol/messages.ts";
+import type { AgentMessage } from "@devtask/protocol";
 
 export type SessionEvent =
   | { type: "created"; session: Session }

@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import type { SessionManager } from "../session-manager.ts";
 import type { Dispatcher } from "../dispatcher.ts";
-import type { Command } from "../protocol/messages.ts";
+import type { Command } from "@devtask/protocol";
 import type { CreateSessionBody } from "../types.ts";
 import { SessionNotFoundError, InvalidTransitionError } from "../types.ts";
 
