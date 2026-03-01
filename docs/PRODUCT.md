@@ -14,11 +14,11 @@ AI coding tools today are single-threaded experiences. You work on one task, wai
 
 Developers constantly juggle small to medium tasks:
 
-* Add tests to a module
-* Refactor a subsystem
-* Upgrade dependencies
-* Implement a well-scoped feature
-* Fix lint or type errors
+- Add tests to a module
+- Refactor a subsystem
+- Upgrade dependencies
+- Implement a well-scoped feature
+- Fix lint or type errors
 
 These tasks are often independent, but current tools force sequential execution and constant babysitting.
 
@@ -30,19 +30,19 @@ DevTask introduces structured, parallel AI sessions.
 
 Each task:
 
-* Runs in an isolated environment
-* Has a structured brief and plan
-* Follows a deterministic execution loop
-* Validates itself using tests or commands
-* Creates its own branch and pull request
+- Runs in an isolated environment
+- Has a structured brief and plan
+- Follows a deterministic execution loop
+- Validates itself using tests or commands
+- Creates its own branch and pull request
 
 Developers can:
 
-* Start multiple tasks in parallel
-* Switch between sessions instantly
-* Answer clarification questions in batches
-* Review summaries instead of raw logs
-* Merge results independently
+- Start multiple tasks in parallel
+- Switch between sessions instantly
+- Answer clarification questions in batches
+- Review summaries instead of raw logs
+- Merge results independently
 
 It’s not fire-and-forget automation. It’s organized, scalable AI collaboration.
 
@@ -63,11 +63,11 @@ Sessions can pause when blocked and resume later. You stay in control, but you�
 
 ## Why It’s Different
 
-* Built for parallelism, not chat.
-* Designed for independent, production-ready tasks.
-* Structured execution reduces babysitting.
-* Clear lifecycle: brief → plan → execute → validate → PR.
-* Unified view of all active AI sessions.
+- Built for parallelism, not chat.
+- Designed for independent, production-ready tasks.
+- Structured execution reduces babysitting.
+- Clear lifecycle: brief → plan → execute → validate → PR.
+- Unified view of all active AI sessions.
 
 ---
 

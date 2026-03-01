@@ -34,10 +34,7 @@ describe("E2E integration", () => {
       path.dirname(fileURLToPath(import.meta.url)),
       "../../agent-runtime/src/index.ts",
     );
-    const provider = createLocalProvider("node", [
-      "--experimental-strip-types",
-      agentEntry,
-    ]);
+    const provider = createLocalProvider("node", ["--experimental-strip-types", agentEntry]);
     const dispatcher = new Dispatcher(manager, provider);
     dispatcher.start();
 
@@ -116,10 +113,7 @@ describe("E2E integration", () => {
               // Check if session reached terminal state
               if (currentEvent === "updated") {
                 const parsed = JSON.parse(currentData);
-                if (
-                  parsed.session?.status === "done" ||
-                  parsed.session?.status === "failed"
-                ) {
+                if (parsed.session?.status === "done" || parsed.session?.status === "failed") {
                   reader.cancel();
                   break;
                 }
@@ -132,10 +126,7 @@ describe("E2E integration", () => {
 
         // Check if we already cancelled above
         const finalSession = manager.get(session.id);
-        if (
-          finalSession.status === "done" ||
-          finalSession.status === "failed"
-        ) {
+        if (finalSession.status === "done" || finalSession.status === "failed") {
           reader.cancel();
           break;
         }
@@ -162,9 +153,7 @@ describe("E2E integration", () => {
       .filter((d) => d.message?.type === "log");
     assert.ok(logMessages.length > 0, "should have received log messages");
     assert.ok(
-      logMessages.some((m) =>
-        m.message.text.includes("e2e test task"),
-      ),
+      logMessages.some((m) => m.message.text.includes("e2e test task")),
       "should include the task brief in logs",
     );
   });
@@ -203,10 +192,7 @@ describe("E2E integration", () => {
     await new Promise((r) => setTimeout(r, 200));
 
     // Cancel it
-    const cancelRes = await fetch(
-      `${baseUrl}/sessions/${session.id}/cancel`,
-      { method: "POST" },
-    );
+    const cancelRes = await fetch(`${baseUrl}/sessions/${session.id}/cancel`, { method: "POST" });
     assert.equal(cancelRes.status, 200);
     const cancelled: Session = await cancelRes.json();
     assert.equal(cancelled.status, "cancelled");

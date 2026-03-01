@@ -8,9 +8,4 @@ export type {
   Command,
 } from "./messages.ts";
 
-export {
-  encodeLine,
-  decodeLine,
-  createLineParser,
-  type LineCallback,
-} from "./codec.ts";
+export { encodeLine, decodeLine, createLineParser, type LineCallback } from "./codec.ts";

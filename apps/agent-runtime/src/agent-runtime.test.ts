@@ -41,9 +41,7 @@ describe("agent-runtime", () => {
 
     assert.deepEqual(messages[0], { type: "status", status: "running" });
     assert.equal(messages[1]!.type, "log");
-    assert.ok(
-      (messages[1] as { type: "log"; text: string }).text.includes("fix the login bug"),
-    );
+    assert.ok((messages[1] as { type: "log"; text: string }).text.includes("fix the login bug"));
 
     const last = messages[messages.length - 1];
     assert.deepEqual(last, { type: "status", status: "done" });

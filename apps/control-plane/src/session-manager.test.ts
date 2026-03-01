@@ -99,19 +99,13 @@ describe("SessionManager", () => {
       const s = await manager.create({ brief: "test" });
       await assert.rejects(() => manager.pause(s.id), InvalidTransitionError);
       await assert.rejects(() => manager.resume(s.id), InvalidTransitionError);
-      await assert.rejects(
-        () => manager.transition(s.id, "done"),
-        InvalidTransitionError,
-      );
+      await assert.rejects(() => manager.transition(s.id, "done"), InvalidTransitionError);
     });
 
     it("rejects transitions from terminal states", async () => {
       const s = await manager.create({ brief: "test" });
       await manager.cancel(s.id);
-      await assert.rejects(
-        () => manager.transition(s.id, "running"),
-        InvalidTransitionError,
-      );
+      await assert.rejects(() => manager.transition(s.id, "running"), InvalidTransitionError);
       await assert.rejects(() => manager.cancel(s.id), InvalidTransitionError);
     });
 

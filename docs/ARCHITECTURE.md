@@ -36,6 +36,7 @@ The control plane has no knowledge of what the agent is doing (PRs, tests, git, 
 **Clients own:** presenting information to the user, sending commands.
 
 **Control plane owns:**
+
 - Session lifecycle (create, pause, resume, cancel, done, failed)
 - Node provisioning and teardown via the provider interface
 - Dispatch and concurrency (queue tasks, enforce limits)
@@ -94,8 +95,7 @@ The control plane doesn't know or care about PRs, reviews, tests, or any agent-i
 interface Session {
   id: string;
   brief: string;
-  status: "queued" | "provisioning" | "running"
-        | "paused" | "done" | "failed" | "cancelled";
+  status: "queued" | "provisioning" | "running" | "paused" | "done" | "failed" | "cancelled";
   provider: string;
   nodeId?: string;
   agentSessionId?: string;
@@ -109,26 +109,26 @@ interface Session {
 
 REST for commands, SSE for streaming.
 
-| Method | Endpoint | Description |
-|---|---|---|
-| POST | `/sessions` | Create a new task session |
-| GET | `/sessions` | List all sessions |
-| GET | `/sessions/:id` | Get session details |
-| POST | `/sessions/:id/pause` | Pause a session |
-| POST | `/sessions/:id/resume` | Resume a session |
-| POST | `/sessions/:id/cancel` | Cancel a session |
-| POST | `/sessions/:id/signal` | Send a signal to the agent (user answers, etc.) |
-| GET | `/sessions/:id/events` | SSE stream — agent messages, status changes, logs |
+| Method | Endpoint               | Description                                       |
+| ------ | ---------------------- | ------------------------------------------------- |
+| POST   | `/sessions`            | Create a new task session                         |
+| GET    | `/sessions`            | List all sessions                                 |
+| GET    | `/sessions/:id`        | Get session details                               |
+| POST   | `/sessions/:id/pause`  | Pause a session                                   |
+| POST   | `/sessions/:id/resume` | Resume a session                                  |
+| POST   | `/sessions/:id/cancel` | Cancel a session                                  |
+| POST   | `/sessions/:id/signal` | Send a signal to the agent (user answers, etc.)   |
+| GET    | `/sessions/:id/events` | SSE stream — agent messages, status changes, logs |
 
 ## Tech Stack
 
-| Layer | Choice |
-|---|---|
-| Language | TypeScript |
-| AI runtime (per node) | `@anthropic-ai/claude-agent-sdk` |
-| Client ↔ Control plane | REST + SSE |
-| Control plane ↔ Nodes | stdin/stdout over platform-native transport |
-| State storage | JSON files on disk (control plane) |
+| Layer                  | Choice                                      |
+| ---------------------- | ------------------------------------------- |
+| Language               | TypeScript                                  |
+| AI runtime (per node)  | `@anthropic-ai/claude-agent-sdk`            |
+| Client ↔ Control plane | REST + SSE                                  |
+| Control plane ↔ Nodes  | stdin/stdout over platform-native transport |
+| State storage          | JSON files on disk (control plane)          |
 
 ## Known Limitations (to improve later)
 
