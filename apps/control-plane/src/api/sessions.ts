@@ -1,7 +1,6 @@
 import { Hono } from "hono";
 import type { SessionManager } from "../session-manager.ts";
 import type { Dispatcher } from "../dispatcher.ts";
-import type { Command } from "@devtask/protocol";
 import type { CreateSessionBody } from "../types.ts";
 import { SessionNotFoundError, InvalidTransitionError } from "../types.ts";
 
@@ -60,18 +59,6 @@ export function sessionRoutes(manager: SessionManager, dispatcher: Dispatcher): 
     } catch (e) {
       if (e instanceof SessionNotFoundError) return c.json({ error: e.message }, 404);
       if (e instanceof InvalidTransitionError) return c.json({ error: e.message }, 409);
-      throw e;
-    }
-  });
-
-  app.post("/:id/signal", async (c) => {
-    try {
-      manager.get(c.req.param("id")); // verify it exists
-      const command = (await c.req.json()) as Command;
-      await dispatcher.signal(c.req.param("id"), command);
-      return c.json({ ok: true, signal: command });
-    } catch (e) {
-      if (e instanceof SessionNotFoundError) return c.json({ error: e.message }, 404);
       throw e;
     }
   });

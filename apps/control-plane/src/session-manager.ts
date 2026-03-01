@@ -7,13 +7,13 @@ import {
   SessionNotFoundError,
   InvalidTransitionError,
 } from "./types.ts";
-import type { AgentMessage } from "@devtask/protocol";
+import type { SDKMessage } from "@anthropic-ai/claude-agent-sdk";
 
 export type SessionEvent =
   | { type: "created"; session: Session }
   | { type: "updated"; session: Session }
   | { type: "deleted"; sessionId: string }
-  | { type: "agent_message"; sessionId: string; message: AgentMessage };
+  | { type: "agent_message"; sessionId: string; message: SDKMessage };
 
 type Listener = (event: SessionEvent) => void;
 
@@ -105,7 +105,7 @@ export class SessionManager {
     };
   }
 
-  emitAgentMessage(sessionId: string, message: AgentMessage): void {
+  emitAgentMessage(sessionId: string, message: SDKMessage): void {
     this.get(sessionId); // verify session exists
     this.emit(sessionId, { type: "agent_message", sessionId, message });
   }
