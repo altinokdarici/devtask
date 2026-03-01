@@ -7,10 +7,11 @@
     "dev": "node --watch src/index.ts",
     "test": "node --test $(find src -name '*.test.ts')",
     "build": "tsc",
-    "bundle": "esbuild src/index.ts --bundle --platform=node --format=esm --outfile=dist/bundle.js",
+    "bundle": "esbuild src/index.ts --bundle --platform=node --format=esm --outfile=dist/bundle.js --external:@anthropic-ai/claude-agent-sdk",
     "start": "node dist/index.js"
   },
   "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.2.63",
     "@devtask/protocol": "workspace:*"
   },
   "devDependencies": {

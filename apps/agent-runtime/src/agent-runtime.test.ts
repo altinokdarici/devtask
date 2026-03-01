@@ -8,6 +8,7 @@ function spawnAgent(brief: string): ReturnType<typeof spawn> {
   return spawn("node", ["--experimental-strip-types", "src/index.ts", brief], {
     cwd: new URL("..", import.meta.url).pathname,
     stdio: ["pipe", "pipe", "inherit"],
+    env: { ...process.env, DEVTASK_MOCK_AGENT: "1" },
   });
 }
 

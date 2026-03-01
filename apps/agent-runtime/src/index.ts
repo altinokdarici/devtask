@@ -1,4 +1,3 @@
-import { runMockAgent } from "./mock-agent.ts";
 import { listenForSignals } from "./stdin-handler.ts";
 
 const brief = process.argv[2];
@@ -12,4 +11,10 @@ listenForSignals(() => {
   process.exit(0);
 });
 
-await runMockAgent(brief);
+if (process.env.DEVTASK_MOCK_AGENT === "1") {
+  const { runMockAgent } = await import("./mock-agent.ts");
+  await runMockAgent(brief);
+} else {
+  const { runAgent } = await import("./agent.ts");
+  await runAgent(brief);
+}

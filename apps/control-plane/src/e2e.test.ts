@@ -27,6 +27,7 @@ describe("E2E integration", () => {
   let manager: SessionManager;
 
   before(async () => {
+    process.env.DEVTASK_MOCK_AGENT = "1";
     manager = new SessionManager(createMemoryStore());
     await manager.init();
 
@@ -52,6 +53,7 @@ describe("E2E integration", () => {
 
   after(() => {
     server?.close();
+    delete process.env.DEVTASK_MOCK_AGENT;
   });
 
   it("health check returns ok", async () => {
