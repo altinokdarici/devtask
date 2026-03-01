@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@devtask/api-types": "workspace:*",
+    "@devtask/config": "workspace:*",
     "@devtask/protocol": "workspace:*",
     "@hono/node-server": "^1.19.9",
     "hono": "^4.12.3"
