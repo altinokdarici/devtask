@@ -11,5 +11,8 @@
   },
   "dependencies": {
     "@devtask/protocol": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^25.3.3"
   }
 }
