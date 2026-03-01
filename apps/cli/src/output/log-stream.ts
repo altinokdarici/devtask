@@ -11,16 +11,36 @@ export function renderEvent(event: string, data: string): void {
 
     if (event === "agent_message") {
       const msg = parsed.message;
-      if (msg.type === "status") {
-        console.log(`[status] ${msg.status}`);
-      } else if (msg.type === "log") {
-        console.log(`[log] ${msg.text}`);
-      } else if (msg.type === "question") {
-        console.log(`[question] ${msg.text}`);
-        if (msg.options) {
-          console.log(`  options: ${msg.options.join(", ")}`);
+
+      if (msg.type === "assistant") {
+        const blocks = msg.message?.content ?? [];
+        for (const block of blocks) {
+          if (block.type === "text") {
+            console.log(`[assistant] ${block.text}`);
+          } else if (block.type === "tool_use") {
+            console.log(`[tool] ${block.name}`);
+          }
         }
+        return;
       }
+
+      if (msg.type === "result") {
+        const status = msg.is_error ? "error" : "success";
+        const cost = msg.total_cost_usd != null ? ` ($${msg.total_cost_usd.toFixed(4)})` : "";
+        const duration = msg.duration_ms != null ? ` ${(msg.duration_ms / 1000).toFixed(1)}s` : "";
+        console.log(`[result] ${status}${duration}${cost}`);
+        return;
+      }
+
+      if (msg.type === "system") {
+        if (msg.subtype === "init") {
+          console.log(`[system] model=${msg.model ?? "unknown"}`);
+        }
+        return;
+      }
+
+      // Other SDK message types: log type label
+      console.log(`[${msg.type}]`);
       return;
     }
 
