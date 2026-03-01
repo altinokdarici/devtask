@@ -39,7 +39,7 @@ function createMockSdkProvider(): NodeProvider {
 
 function createRegistry(provider: NodeProvider): ProviderRegistry {
   const registry = new ProviderRegistry();
-  registry.register("codespace", provider);
+  registry.register("local", provider);
   return registry;
 }
 
@@ -69,6 +69,7 @@ class MockDispatcher extends Dispatcher {
     }
 
     await manager.transition(sessionId, "running");
+    await manager.update(sessionId, { nodeId: handle.nodeId });
 
     const abortController = new AbortController();
     const messages = this.mockMessages;

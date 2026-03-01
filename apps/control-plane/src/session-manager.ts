@@ -28,9 +28,11 @@ export class SessionManager {
   private sessions = new Map<string, Session>();
   private listeners = new Map<string, Set<Listener>>();
   private store: SessionStore;
+  private defaultProvider: string;
 
-  constructor(store: SessionStore) {
+  constructor(store: SessionStore, defaultProvider = "local") {
     this.store = store;
+    this.defaultProvider = defaultProvider;
   }
 
   async init(): Promise<void> {
@@ -46,7 +48,7 @@ export class SessionManager {
       id: crypto.randomUUID(),
       brief: body.brief,
       status: "queued",
-      provider: body.provider ?? "codespace",
+      provider: body.provider ?? this.defaultProvider,
       maxRetries: body.maxRetries ?? 0,
       createdAt: now,
       updatedAt: now,
@@ -74,6 +76,16 @@ export class SessionManager {
       throw new InvalidTransitionError(id, session.status, to);
     }
     session.status = to;
+    session.updatedAt = new Date().toISOString();
+    await this.store.save(session);
+    this.emit(id, { type: "updated", session });
+    return session;
+  }
+
+  async update(id: string, fields: { nodeId?: string; agentSessionId?: string }): Promise<Session> {
+    const session = this.get(id);
+    if (fields.nodeId !== undefined) session.nodeId = fields.nodeId;
+    if (fields.agentSessionId !== undefined) session.agentSessionId = fields.agentSessionId;
     session.updatedAt = new Date().toISOString();
     await this.store.save(session);
     this.emit(id, { type: "updated", session });

@@ -44,7 +44,7 @@ function createMockProvider(_opts: MockProviderOptions): NodeProvider & { cancel
 
 function createRegistry(provider: NodeProvider): ProviderRegistry {
   const registry = new ProviderRegistry();
-  registry.register("codespace", provider);
+  registry.register("local", provider);
   return registry;
 }
 
@@ -79,6 +79,7 @@ class TestableDispatcher extends Dispatcher {
     }
 
     await manager.transition(sessionId, "running");
+    await manager.update(sessionId, { nodeId: handle.nodeId });
 
     const abortController = new AbortController();
     this.mockAbortController = abortController;
@@ -128,7 +129,7 @@ describe("Dispatcher", () => {
 
     const dispatcher = new TestableDispatcher(manager, mockProvider, {
       messages: [
-        { type: "system", subtype: "init" } as SDKMessage,
+        { type: "system", subtype: "init", session_id: "sdk-session-1" } as unknown as SDKMessage,
         {
           type: "assistant",
           message: { content: [{ type: "text", text: "working" }] },
@@ -150,6 +151,8 @@ describe("Dispatcher", () => {
 
     const updated = manager.get(session.id);
     assert.equal(updated.status, "done");
+    assert.equal(updated.nodeId, "mock-node-1");
+    assert.equal(updated.agentSessionId, "sdk-session-1");
   });
 
   it("transitions to failed when result has error subtype", async () => {
