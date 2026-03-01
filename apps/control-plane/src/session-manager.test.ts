@@ -26,7 +26,7 @@ describe("SessionManager", () => {
       const session = await manager.create({ brief: "test task" });
       assert.equal(session.status, "queued");
       assert.equal(session.brief, "test task");
-      assert.equal(session.provider, "codespace");
+      assert.equal(session.provider, "local");
       assert.equal(session.maxRetries, 0);
       assert.ok(session.id);
       assert.ok(session.createdAt);
@@ -165,6 +165,71 @@ describe("SessionManager", () => {
 
       await manager.cancel(s2.id);
       assert.equal(events.length, 0);
+    });
+  });
+
+  describe("default provider", () => {
+    it("uses configured default provider", async () => {
+      const m = new SessionManager(createMemoryStore(), "codespace:frontend");
+      await m.init();
+      const session = await m.create({ brief: "test" });
+      assert.equal(session.provider, "codespace:frontend");
+    });
+
+    it("allows explicit provider to override default", async () => {
+      const m = new SessionManager(createMemoryStore(), "codespace:frontend");
+      await m.init();
+      const session = await m.create({ brief: "test", provider: "local" });
+      assert.equal(session.provider, "local");
+    });
+  });
+
+  describe("update", () => {
+    it("sets nodeId and persists", async () => {
+      const saved: Session[] = [];
+      const store: SessionStore = {
+        async save(s) {
+          saved.push(structuredClone(s));
+        },
+        async loadAll() {
+          return [];
+        },
+      };
+      const m = new SessionManager(store);
+      await m.init();
+      const session = await m.create({ brief: "test" });
+      const before = session.updatedAt;
+
+      await new Promise((r) => setTimeout(r, 5));
+      await m.update(session.id, { nodeId: "node-123" });
+
+      const updated = m.get(session.id);
+      assert.equal(updated.nodeId, "node-123");
+      assert.notEqual(updated.updatedAt, before);
+      // save called for create + update
+      assert.ok(saved.length >= 2);
+    });
+
+    it("sets agentSessionId and emits event", async () => {
+      const events: SessionEvent[] = [];
+      const session = await manager.create({ brief: "test" });
+      manager.subscribe(session.id, (e) => events.push(e));
+
+      await manager.update(session.id, { agentSessionId: "agent-456" });
+
+      assert.equal(manager.get(session.id).agentSessionId, "agent-456");
+      assert.equal(events.length, 1);
+      assert.equal(events[0].type, "updated");
+    });
+
+    it("updates only the provided fields", async () => {
+      const session = await manager.create({ brief: "test" });
+      await manager.update(session.id, { nodeId: "n1" });
+      await manager.update(session.id, { agentSessionId: "a1" });
+
+      const updated = manager.get(session.id);
+      assert.equal(updated.nodeId, "n1");
+      assert.equal(updated.agentSessionId, "a1");
     });
   });
 

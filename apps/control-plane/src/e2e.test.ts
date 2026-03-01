@@ -39,7 +39,7 @@ function createMockSdkProvider(): NodeProvider {
 
 function createRegistry(provider: NodeProvider): ProviderRegistry {
   const registry = new ProviderRegistry();
-  registry.register("codespace", provider);
+  registry.register("local", provider);
   return registry;
 }
 
