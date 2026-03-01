@@ -1,4 +1,6 @@
-import type { AgentMessage, Command } from "@devtask/protocol";
+import type { SpawnedProcess, SpawnOptions } from "@anthropic-ai/claude-agent-sdk";
+
+export type SpawnFn = (options: SpawnOptions) => SpawnedProcess;
 
 export interface NodeConfig {
   sessionId: string;
@@ -11,12 +13,6 @@ export interface NodeProvider {
 
 export interface NodeHandle {
   readonly nodeId: string;
-  start(taskBrief: string): AgentProcess;
+  readonly spawnFn: SpawnFn;
   destroy(): Promise<void>;
-}
-
-export interface AgentProcess {
-  messages: AsyncIterable<AgentMessage>;
-  signal(command: Command): Promise<void>;
-  kill(): Promise<void>;
 }

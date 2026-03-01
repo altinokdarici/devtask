@@ -10,9 +10,9 @@
     "start": "node dist/index.js"
   },
   "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.2.63",
     "@devtask/api-types": "workspace:*",
     "@devtask/config": "workspace:*",
-    "@devtask/protocol": "workspace:*",
     "@hono/node-server": "^1.19.9",
     "hono": "^4.12.3"
   },

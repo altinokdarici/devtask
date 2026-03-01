@@ -1,10 +1,11 @@
+import { query, type Query } from "@anthropic-ai/claude-agent-sdk";
 import type { SessionManager } from "./session-manager.ts";
-import type { NodeProvider, NodeHandle, AgentProcess } from "./providers/provider.ts";
-import type { Command } from "@devtask/protocol";
+import type { NodeProvider, NodeHandle } from "./providers/provider.ts";
 
 interface ActiveSession {
   handle: NodeHandle;
-  process: AgentProcess;
+  query: Query;
+  abortController: AbortController;
 }
 
 export class Dispatcher {
@@ -46,43 +47,45 @@ export class Dispatcher {
 
     await this.manager.transition(sessionId, "running");
 
-    const process = handle.start(session.brief);
-    this.active.set(sessionId, { handle, process });
+    const abortController = new AbortController();
+    const q = query({
+      prompt: session.brief,
+      options: {
+        spawnClaudeCodeProcess: handle.spawnFn,
+        abortController,
+        permissionMode: "bypassPermissions",
+      },
+    });
 
-    this.consumeMessages(sessionId, handle, process);
-  }
+    this.active.set(sessionId, { handle, query: q, abortController });
 
-  async signal(sessionId: string, command: Command): Promise<void> {
-    const entry = this.active.get(sessionId);
-    if (!entry) return;
-    await entry.process.signal(command);
+    this.consumeMessages(sessionId, handle, q);
   }
 
   async cancel(sessionId: string): Promise<void> {
     const entry = this.active.get(sessionId);
     if (entry) {
-      await entry.process.kill();
+      entry.abortController.abort();
+      entry.query.close();
       await entry.handle.destroy();
       this.active.delete(sessionId);
     }
     await this.manager.cancel(sessionId);
   }
 
-  private consumeMessages(sessionId: string, handle: NodeHandle, process: AgentProcess): void {
+  private consumeMessages(sessionId: string, handle: NodeHandle, q: Query): void {
     (async () => {
       try {
-        for await (const msg of process.messages) {
+        for await (const msg of q) {
           this.manager.emitAgentMessage(sessionId, msg);
 
-          if (msg.type === "status") {
-            if (msg.status === "done") {
+          if (msg.type === "result") {
+            if (msg.subtype === "success") {
               await this.manager.transition(sessionId, "done");
-              break;
-            }
-            if (msg.status === "failed") {
+            } else {
               await this.manager.transition(sessionId, "failed");
-              break;
             }
+            break;
           }
         }
       } catch {

@@ -1,5 +1,3 @@
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { Hono } from "hono";
 import { serve } from "@hono/node-server";
 import { loadConfig } from "@devtask/config";
@@ -14,11 +12,7 @@ const config = loadConfig();
 const manager = new SessionManager(createFileStore());
 await manager.init();
 
-const agentEntry = path.resolve(
-  path.dirname(fileURLToPath(import.meta.url)),
-  "../../agent-runtime/src/index.ts",
-);
-const provider = createLocalProvider("node", ["--experimental-strip-types", agentEntry]);
+const provider = createLocalProvider();
 const dispatcher = new Dispatcher(manager, provider);
 dispatcher.start();
 
