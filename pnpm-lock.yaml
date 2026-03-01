@@ -18,7 +18,17 @@ importers:
         specifier: workspace:*
         version: link:../../packages/protocol
 
-  apps/cli: {}
+  apps/cli:
+    dependencies:
+      '@devtask/api-types':
+        specifier: workspace:*
+        version: link:../../packages/api-types
+      '@devtask/config':
+        specifier: workspace:*
+        version: link:../../packages/config
+      citty:
+        specifier: ^0.1.6
+        version: 0.1.6
 
   apps/control-plane:
     dependencies:
@@ -59,6 +69,13 @@ packages:
   '@types/node@25.3.3':
     resolution: {integrity: sha512-DpzbrH7wIcBaJibpKo9nnSQL0MTRdnWttGyE5haGwK86xgMOkFLp7vEyfQPGLOJh5wNYiJ3V9PmUMDhV9u8kkQ==}
 
+  citty@0.1.6:
+    resolution: {integrity: sha512-tskPPKEs8D2KPafUypv2gxwJP8h/OaJmC82QQGGDQcHvXX43xF2VDACcJVmZ0EuSxkpO9Kc4MlrA3q0+FG58AQ==}
+
+  consola@3.4.2:
+    resolution: {integrity: sha512-5IKcdX0nnYavi6G7TtOhwkYzyjfJlatbjMjuLSfE2kYT5pMDOilZ4OvMhi637CcDICTmz3wARPoyhqyX1Y+XvA==}
+    engines: {node: ^14.18.0 || >=16.10.0}
+
   hono@4.12.3:
     resolution: {integrity: sha512-SFsVSjp8sj5UumXOOFlkZOG6XS9SJDKw0TbwFeV+AJ8xlST8kxK5Z/5EYa111UY8732lK2S/xB653ceuaoGwpg==}
     engines: {node: '>=16.9.0'}
@@ -80,6 +97,12 @@ snapshots:
   '@types/node@25.3.3':
     dependencies:
       undici-types: 7.18.2
+
+  citty@0.1.6:
+    dependencies:
+      consola: 3.4.2
+
+  consola@3.4.2: {}
 
   hono@4.12.3: {}
 

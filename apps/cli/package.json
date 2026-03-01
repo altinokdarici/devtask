@@ -3,9 +3,17 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "bin": {
+    "devtask": "./src/index.ts"
+  },
   "scripts": {
     "dev": "node --watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@devtask/api-types": "workspace:*",
+    "@devtask/config": "workspace:*",
+    "citty": "^0.1.6"
   }
 }
