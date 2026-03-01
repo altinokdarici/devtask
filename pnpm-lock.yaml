@@ -17,6 +17,10 @@ importers:
       '@devtask/protocol':
         specifier: workspace:*
         version: link:../../packages/protocol
+    devDependencies:
+      '@types/node':
+        specifier: ^25.3.3
+        version: 25.3.3
 
   apps/cli:
     dependencies:
@@ -29,6 +33,10 @@ importers:
       citty:
         specifier: ^0.1.6
         version: 0.1.6
+    devDependencies:
+      '@types/node':
+        specifier: ^25.3.3
+        version: 25.3.3
 
   apps/control-plane:
     dependencies:
@@ -54,7 +62,11 @@ importers:
 
   packages/api-types: {}
 
-  packages/config: {}
+  packages/config:
+    devDependencies:
+      '@types/node':
+        specifier: ^25.3.3
+        version: 25.3.3
 
   packages/protocol: {}
 

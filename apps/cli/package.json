@@ -15,5 +15,8 @@
     "@devtask/api-types": "workspace:*",
     "@devtask/config": "workspace:*",
     "citty": "^0.1.6"
+  },
+  "devDependencies": {
+    "@types/node": "^25.3.3"
   }
 }
