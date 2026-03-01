@@ -5,7 +5,6 @@ export function encodeLine(msg: AgentMessage | Command): string {
 }
 
 export function decodeLine(line: string): AgentMessage | Command {
-  const x: number = "not a number";
   return JSON.parse(line);
 }
 
