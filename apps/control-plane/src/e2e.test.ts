@@ -9,6 +9,7 @@ import { createRouter } from "./api/router.ts";
 import type { Session } from "./types.ts";
 import type { SessionStore } from "./types.ts";
 import type { NodeProvider, NodeHandle } from "./providers/provider.ts";
+import { ProviderRegistry } from "./providers/registry.ts";
 import type { SDKMessage, Query } from "@anthropic-ai/claude-agent-sdk";
 
 function createMemoryStore(): SessionStore {
@@ -36,17 +37,23 @@ function createMockSdkProvider(): NodeProvider {
   };
 }
 
+function createRegistry(provider: NodeProvider): ProviderRegistry {
+  const registry = new ProviderRegistry();
+  registry.register("codespace", provider);
+  return registry;
+}
+
 class MockDispatcher extends Dispatcher {
   private mockMessages: SDKMessage[];
 
   constructor(manager: SessionManager, provider: NodeProvider, messages: SDKMessage[]) {
-    super(manager, provider);
+    super(manager, createRegistry(provider));
     this.mockMessages = messages;
   }
 
   async dispatch(sessionId: string): Promise<void> {
     const manager = (this as unknown as { manager: SessionManager }).manager;
-    const provider = (this as unknown as { provider: NodeProvider }).provider;
+    const providers = (this as unknown as { providers: ProviderRegistry }).providers;
     const session = manager.get(sessionId);
     if (session.status !== "queued") return;
 
@@ -54,6 +61,7 @@ class MockDispatcher extends Dispatcher {
 
     let handle: NodeHandle;
     try {
+      const provider = providers.get(session.provider);
       handle = await provider.provision({ sessionId, provider: session.provider });
     } catch {
       await manager.transition(sessionId, "failed");
@@ -83,26 +91,6 @@ class MockDispatcher extends Dispatcher {
       }
     ).consumeMessages.bind(this);
     consumeMessages(sessionId, handle, mockQuery);
-  }
-
-  async cancel(sessionId: string): Promise<void> {
-    const active = (
-      this as unknown as {
-        active: Map<
-          string,
-          { handle: NodeHandle; query: { close: () => void }; abortController: AbortController }
-        >;
-      }
-    ).active;
-    const entry = active.get(sessionId);
-    if (entry) {
-      entry.abortController.abort();
-      entry.query.close();
-      await entry.handle.destroy();
-      active.delete(sessionId);
-    }
-    const manager = (this as unknown as { manager: SessionManager }).manager;
-    await manager.cancel(sessionId);
   }
 }
 
