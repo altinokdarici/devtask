@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "node --watch src/index.ts",
-    "test": "node --test src/**/*.test.ts",
+    "test": "node --test $(find src -name '*.test.ts')",
     "build": "tsc",
     "start": "node dist/index.js"
   },
