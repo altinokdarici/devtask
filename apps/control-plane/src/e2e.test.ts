@@ -86,7 +86,14 @@ class MockDispatcher extends Dispatcher {
   }
 
   async cancel(sessionId: string): Promise<void> {
-    const active = (this as unknown as { active: Map<string, { handle: NodeHandle; query: { close: () => void }; abortController: AbortController }> }).active;
+    const active = (
+      this as unknown as {
+        active: Map<
+          string,
+          { handle: NodeHandle; query: { close: () => void }; abortController: AbortController }
+        >;
+      }
+    ).active;
     const entry = active.get(sessionId);
     if (entry) {
       entry.abortController.abort();
@@ -106,8 +113,17 @@ describe("E2E integration", () => {
 
   const mockMessages: SDKMessage[] = [
     { type: "system", subtype: "init", model: "claude-sonnet-4-20250514" } as unknown as SDKMessage,
-    { type: "assistant", message: { content: [{ type: "text", text: "Working on: e2e test task" }] } } as unknown as SDKMessage,
-    { type: "result", subtype: "success", is_error: false, duration_ms: 100, total_cost_usd: 0.01 } as unknown as SDKMessage,
+    {
+      type: "assistant",
+      message: { content: [{ type: "text", text: "Working on: e2e test task" }] },
+    } as unknown as SDKMessage,
+    {
+      type: "result",
+      subtype: "success",
+      is_error: false,
+      duration_ms: 100,
+      total_cost_usd: 0.01,
+    } as unknown as SDKMessage,
   ];
 
   before(async () => {

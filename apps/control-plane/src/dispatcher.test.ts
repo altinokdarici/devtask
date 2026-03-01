@@ -20,9 +20,7 @@ interface MockProviderOptions {
   keepAlive?: boolean;
 }
 
-function createMockProvider(
-  _opts: MockProviderOptions,
-): NodeProvider & { cancelled: boolean } {
+function createMockProvider(_opts: MockProviderOptions): NodeProvider & { cancelled: boolean } {
   const result = {
     cancelled: false,
     async provision() {
@@ -48,11 +46,7 @@ class TestableDispatcher extends Dispatcher {
   private mockKeepAlive: boolean;
   private mockAbortController: AbortController | null = null;
 
-  constructor(
-    manager: SessionManager,
-    provider: NodeProvider,
-    opts: MockProviderOptions,
-  ) {
+  constructor(manager: SessionManager, provider: NodeProvider, opts: MockProviderOptions) {
     super(manager, provider);
     this.mockMessages = opts.messages;
     this.mockKeepAlive = opts.keepAlive ?? false;
@@ -113,7 +107,14 @@ class TestableDispatcher extends Dispatcher {
   }
 
   async cancel(sessionId: string): Promise<void> {
-    const active = (this as unknown as { active: Map<string, { handle: NodeHandle; query: { close: () => void }; abortController: AbortController }> }).active;
+    const active = (
+      this as unknown as {
+        active: Map<
+          string,
+          { handle: NodeHandle; query: { close: () => void }; abortController: AbortController }
+        >;
+      }
+    ).active;
     const entry = active.get(sessionId);
     if (entry) {
       entry.abortController.abort();
@@ -140,8 +141,17 @@ describe("Dispatcher", () => {
     const dispatcher = new TestableDispatcher(manager, mockProvider, {
       messages: [
         { type: "system", subtype: "init" } as SDKMessage,
-        { type: "assistant", message: { content: [{ type: "text", text: "working" }] } } as unknown as SDKMessage,
-        { type: "result", subtype: "success", is_error: false, duration_ms: 100, total_cost_usd: 0.01 } as unknown as SDKMessage,
+        {
+          type: "assistant",
+          message: { content: [{ type: "text", text: "working" }] },
+        } as unknown as SDKMessage,
+        {
+          type: "result",
+          subtype: "success",
+          is_error: false,
+          duration_ms: 100,
+          total_cost_usd: 0.01,
+        } as unknown as SDKMessage,
       ],
     });
     dispatcher.start();
@@ -160,7 +170,12 @@ describe("Dispatcher", () => {
     const dispatcher = new TestableDispatcher(manager, mockProvider, {
       messages: [
         { type: "system", subtype: "init" } as SDKMessage,
-        { type: "result", subtype: "error_during_execution", is_error: true, errors: ["boom"] } as unknown as SDKMessage,
+        {
+          type: "result",
+          subtype: "error_during_execution",
+          is_error: true,
+          errors: ["boom"],
+        } as unknown as SDKMessage,
       ],
     });
     dispatcher.start();
@@ -177,8 +192,15 @@ describe("Dispatcher", () => {
     const mockProvider = createMockProvider({ messages: [] });
 
     const messages: SDKMessage[] = [
-      { type: "system", subtype: "init", model: "claude-sonnet-4-20250514" } as unknown as SDKMessage,
-      { type: "assistant", message: { content: [{ type: "text", text: "hello" }] } } as unknown as SDKMessage,
+      {
+        type: "system",
+        subtype: "init",
+        model: "claude-sonnet-4-20250514",
+      } as unknown as SDKMessage,
+      {
+        type: "assistant",
+        message: { content: [{ type: "text", text: "hello" }] },
+      } as unknown as SDKMessage,
       { type: "result", subtype: "success", is_error: false } as unknown as SDKMessage,
     ];
 
@@ -205,9 +227,7 @@ describe("Dispatcher", () => {
     const mockProvider = createMockProvider({ messages: [] });
 
     const dispatcher = new TestableDispatcher(manager, mockProvider, {
-      messages: [
-        { type: "system", subtype: "init" } as SDKMessage,
-      ],
+      messages: [{ type: "system", subtype: "init" } as SDKMessage],
       keepAlive: true,
     });
     dispatcher.start();
