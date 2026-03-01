@@ -16,95 +16,60 @@ Every platform already provides a way to execute a process remotely and stream i
 | Docker           | `docker exec -i <container>` |
 | Cloud VM         | `ssh user@host`              |
 
-The agent runtime runs as a child process on the node. The control plane talks to it through **stdin/stdout over the platform's native transport**. No servers, no ports, no tunnels.
+The `@anthropic-ai/claude-agent-sdk` handles all communication with the Claude process through stdin/stdout. Providers just need to supply a `SpawnFn` — a function the SDK calls to launch the process in the target environment.
 
 ```
 Control Plane (server)
 │
-└── <platform-specific exec> ./agent-runtime
+└── query({ spawnClaudeCodeProcess: provider.spawnFn })
         │
-        stdout ◄── agent messages (status, logs, questions)
-        stdin  ──► signals (pause, cancel, user answers)
+        SDK manages stdin/stdout automatically
+        │
+        Node (Codespace / Docker / VM)
+        └── Claude Code process
 ```
 
 ## Interface
 
-One interface covers the full lifecycle — provisioning, communication, and teardown. No separate transport abstraction.
+Each provider implements two interfaces: provisioning the environment and supplying a spawn function.
 
 ```typescript
+import type { SpawnedProcess, SpawnOptions } from "@anthropic-ai/claude-agent-sdk";
+
+type SpawnFn = (options: SpawnOptions) => SpawnedProcess;
+
 interface NodeProvider {
   provision(config: NodeConfig): Promise<NodeHandle>;
 }
 
 interface NodeHandle {
   readonly nodeId: string;
-
-  // Start the agent runtime, returns a running process
-  start(taskBrief: string): AgentProcess;
-
-  // Destroy the node (after agent signals done, or cancellation)
+  readonly spawnFn: SpawnFn;
   destroy(): Promise<void>;
 }
-
-interface AgentProcess {
-  // Stream of structured messages from the agent
-  messages: AsyncIterable<AgentMessage>;
-
-  // Send a signal to the agent (pause, cancel, user answer)
-  signal(command: Command): Promise<void>;
-
-  // Kill the agent process (not the node — node stays alive for resume)
-  kill(): Promise<void>;
-}
 ```
 
-## Message Protocol
-
-Communication between the control plane and agent runtime uses newline-delimited JSON over stdin/stdout.
-
-### Agent → Control Plane (stdout)
-
-```jsonl
-{"type":"status","status":"running"}
-{"type":"log","text":"Reading auth module..."}
-{"type":"log","text":"Writing test file..."}
-{"type":"question","id":"q1","text":"Should I use vitest or jest?","options":["vitest","jest"]}
-{"type":"log","text":"All tests passing, opening PR..."}
-{"type":"log","text":"Addressing review comment on line 23..."}
-{"type":"status","status":"done"}
-```
-
-The control plane doesn't interpret these messages — it relays them to connected clients via SSE. Status messages (`running`, `done`, `failed`) update the session state. Everything else passes through.
-
-### Control Plane → Agent (stdin)
-
-```jsonl
-{"type":"answer","questionId":"q1","value":"vitest"}
-{"type":"signal","action":"pause"}
-{"type":"signal","action":"cancel"}
-```
+The `SpawnFn` receives `SpawnOptions` from the SDK (command, args, env, signal) and returns a `SpawnedProcess` (stdin, stdout, exit events). For local dev, this is a thin wrapper around `child_process.spawn`. For remote providers, it maps to the platform's exec command (e.g. `gh cs ssh`).
 
 ## Provider Implementations
 
-Each provider maps the `NodeProvider` interface to platform-specific commands. The node stays alive between `start()` and `destroy()` — if the agent goes idle (e.g. during PR review), the process can exit and `start()` is called again with the SDK's session resume.
+Each provider maps the `NodeProvider` interface to platform-specific commands.
 
 ### CodespaceProvider (shipping first)
 
 ```
 provision()  → gh cs create --repo <repo> --machine <size>
-start()      → gh cs ssh -c <name> -- ./agent-runtime
-signal()     → write JSON to stdin of the ssh process
-kill()       → gh cs ssh -c <name> -- kill <pid>
+spawnFn()    → gh cs ssh -c <name> -- <command> <args>
 destroy()    → gh cs delete -c <name>
 ```
+
+The `spawnFn` wraps `gh cs ssh` as a `SpawnedProcess`, piping stdin/stdout through the SSH tunnel. The SDK calls this function each time it needs to launch or restart the Claude process.
 
 ### DockerProvider (future)
 
 ```
 provision()  → docker create + docker start
-start()      → docker exec -i <container> ./agent-runtime
-signal()     → write JSON to stdin of the exec process
-kill()       → docker exec <container> kill <pid>
+spawnFn()    → docker exec -i <container> <command> <args>
 destroy()    → docker rm -f <container>
 ```
 
@@ -112,65 +77,56 @@ destroy()    → docker rm -f <container>
 
 ```
 provision()  → cloud API (e.g. EC2 RunInstances) + wait for SSH
-start()      → ssh user@host ./agent-runtime
-signal()     → write JSON to stdin of the ssh process
-kill()       → ssh user@host kill <pid>
+spawnFn()    → ssh user@host <command> <args>
 destroy()    → cloud API to terminate instance
 ```
 
-## Agent Runtime Lifecycle
+## How It Works
 
-The agent runtime is a small TypeScript process that runs inside the node:
+The control plane calls `query()` from the SDK, passing the provider's `spawnFn`:
 
 ```typescript
 import { query } from "@anthropic-ai/claude-agent-sdk";
 
-// Read task brief from stdin or args
-const brief = await readBrief();
+const handle = await provider.provision({ sessionId, provider: "codespace" });
 
-for await (const message of query({
-  prompt: brief,
+const q = query({
+  prompt: taskBrief,
   options: {
-    systemPrompt: DEVTASK_AGENT_PROMPT,
-    allowedTools: ["Read", "Edit", "Write", "Bash", "Glob", "Grep", "Task"],
-    permissionMode: "acceptEdits",
-    resume: sessionId, // for resuming after pause or review cycle
-    agents: {
-      planner: {
-        description: "Creates step-by-step plans from task briefs.",
-        prompt: PLANNER_PROMPT,
-        tools: ["Read", "Glob", "Grep"],
-      },
-    },
+    spawnClaudeCodeProcess: handle.spawnFn,
+    abortController,
+    permissionMode: "bypassPermissions",
   },
-})) {
-  // Write structured messages to stdout for the control plane
-  emit(toAgentMessage(message));
+});
+
+for await (const msg of q) {
+  // Relay SDK messages to clients via SSE
+  sessionManager.emitAgentMessage(sessionId, msg);
+
+  if (msg.type === "result") {
+    // Agent finished — transition session to done/failed
+    break;
+  }
 }
+
+await handle.destroy();
 ```
 
-It also listens on stdin for signals from the control plane (pause, cancel, review comments).
+The SDK handles the full agent lifecycle — launching the process, sending prompts, receiving responses, managing tool use, and signaling completion. The control plane just iterates messages and manages session state.
 
 ## Node Lifecycle
-
-The node stays alive between `start()` and `destroy()`. The agent handles its own workflow end-to-end — including PR creation, review cycles, and watching for merges. The control plane only knows:
-
-- `running` — agent is working
-- `done` — agent signaled it's finished, node can be torn down
-- `failed` — agent encountered an unrecoverable error
 
 ```
 Control Plane                          Node
      │                                  │
-     │  dispatch brief                  │
-     ├──► start(brief) ───────────────►│
+     │  query({ spawnClaudeCodeProcess: spawnFn })
+     ├──────────────────────────────►  │
+     │   SDK launches process via spawnFn
      │                                  ├── agent works autonomously
-     │  ◄── {"type":"log",...}    ◄─────┤  streams logs
-     │  ◄── {"type":"question",...} ◄───┤  asks user questions
-     │──► {"type":"answer",...}  ──────►│  relay user answers
+     │  ◄── SDKMessage (assistant)  ◄───┤  streams responses
+     │  ◄── SDKMessage (system)     ◄───┤  system info
      │                                  ├── creates PR, handles reviews
-     │  ◄── {"type":"status",           │
-     │       "status":"done"}    ◄──────┤  agent signals done
+     │  ◄── SDKMessage (result)     ◄───┤  agent signals done
      │                                  │
      ├──► destroy() ───────────────────►│  node torn down
      │                                  │
@@ -178,10 +134,10 @@ Control Plane                          Node
 
 ## Why This Design
 
-| Decision                                   | Rationale                                                       |
-| ------------------------------------------ | --------------------------------------------------------------- |
-| stdin/stdout over native transport         | Works behind any NAT. No servers, ports, or relay infra needed. |
-| Provider owns provisioning + communication | One interface, no separate transport layer to wire up.          |
-| Newline-delimited JSON protocol            | Simple, streamable, debuggable. Easy to parse in any language.  |
-| Node stays alive until agent signals done  | Agent owns its full lifecycle including PR reviews.             |
-| SDK session resume                         | Agent picks up where it left off after pause or review idle.    |
+| Decision                                  | Rationale                                                       |
+| ----------------------------------------- | --------------------------------------------------------------- |
+| SDK's `spawnClaudeCodeProcess`            | Eliminates custom wire protocol. SDK handles all communication. |
+| stdin/stdout over native transport        | Works behind any NAT. No servers, ports, or relay infra needed. |
+| Provider owns provisioning + spawn        | One interface, no separate transport layer to wire up.          |
+| Node stays alive until agent signals done | Agent owns its full lifecycle including PR reviews.             |
+| SDK session resume                        | Agent picks up where it left off after pause or review idle.    |

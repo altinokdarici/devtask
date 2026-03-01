@@ -40,7 +40,7 @@ The control plane has no knowledge of what the agent is doing (PRs, tests, git, 
 - Session lifecycle (create, pause, resume, cancel, done, failed)
 - Node provisioning and teardown via the provider interface
 - Dispatch and concurrency (queue tasks, enforce limits)
-- Message relay — streams agent messages to clients, forwards client signals to nodes
+- Message relay — streams SDK messages to clients via SSE
 - Does NOT interpret agent messages — just passes them through
 
 **Each node owns:** everything about the actual coding work — cloning the repo, reading code, planning, editing files, running tests, committing, opening PRs, responding to reviews. The agent decides its own workflow and signals when it's done.
@@ -67,13 +67,13 @@ Standalone HTTP server. Can run on the user's machine, a cloud box, or shared te
 
 ### Node Provider
 
-Pluggable interface for provisioning isolated environments and communicating with them. See [NODE_PROVIDERS.md](./NODE_PROVIDERS.md) for the full design.
+Pluggable interface for provisioning isolated environments. Each provider supplies a `SpawnFn` that the SDK calls to launch the Claude process remotely. See [NODE_PROVIDERS.md](./NODE_PROVIDERS.md) for the full design.
 
 The initial implementation is **GitHub Codespaces**. The interface supports adding other providers (Docker, cloud VMs) later.
 
-### Agent Runtime
+### SDK Integration
 
-A lightweight process running inside each node. Receives a task brief, runs a Claude Agent SDK `query()` call, and streams messages back over stdout/stdin. The agent handles its full workflow autonomously.
+The control plane calls `query()` from `@anthropic-ai/claude-agent-sdk` directly, passing the provider's `spawnFn` as the `spawnClaudeCodeProcess` option. The SDK handles all communication with the Claude process — no custom wire protocol needed. The control plane iterates the SDK's `AsyncGenerator<SDKMessage>` to relay messages and detect completion.
 
 ## Session Lifecycle
 
@@ -87,7 +87,7 @@ From the control plane's perspective, sessions are simple:
                                CANCELLED
 ```
 
-The control plane doesn't know or care about PRs, reviews, tests, or any agent-internal states. `RUNNING` means the agent is working. `DONE` means the agent signaled it's finished. Everything in between is the agent's business.
+The control plane doesn't know or care about PRs, reviews, tests, or any agent-internal states. `RUNNING` means the agent is working. `DONE` means the SDK returned a `result` message with `subtype: "success"`. Everything in between is the agent's business.
 
 ## Data Model
 
@@ -117,22 +117,21 @@ REST for commands, SSE for streaming.
 | POST   | `/sessions/:id/pause`  | Pause a session                                   |
 | POST   | `/sessions/:id/resume` | Resume a session                                  |
 | POST   | `/sessions/:id/cancel` | Cancel a session                                  |
-| POST   | `/sessions/:id/signal` | Send a signal to the agent (user answers, etc.)   |
 | GET    | `/sessions/:id/events` | SSE stream — agent messages, status changes, logs |
 
 ## Tech Stack
 
-| Layer                  | Choice                                      |
-| ---------------------- | ------------------------------------------- |
-| Language               | TypeScript                                  |
-| AI runtime (per node)  | `@anthropic-ai/claude-agent-sdk`            |
-| Client ↔ Control plane | REST + SSE                                  |
-| Control plane ↔ Nodes  | stdin/stdout over platform-native transport |
-| State storage          | JSON files on disk (control plane)          |
+| Layer                  | Choice                                                      |
+| ---------------------- | ----------------------------------------------------------- |
+| Language               | TypeScript                                                  |
+| AI runtime             | `@anthropic-ai/claude-agent-sdk` — `query()` with `SpawnFn` |
+| Client ↔ Control plane | REST + SSE                                                  |
+| Control plane ↔ Nodes  | SDK manages stdin/stdout via provider's `SpawnFn`           |
+| State storage          | JSON files on disk (control plane)                          |
 
 ## Known Limitations (to improve later)
 
-- **Reconnection** — on restart, the control plane re-runs `start()` with SDK resume on sessions that were `running`. Log messages emitted during the gap are lost. A more robust solution (agent-side buffering, replay) is needed for production.
+- **Reconnection** — on restart, the control plane re-runs `query()` with SDK resume on sessions that were `running`. Log messages emitted during the gap are lost. A more robust solution (agent-side buffering, replay) is needed for production.
 - **Queuing** — basic in-memory FIFO queue with a concurrency cap. No persistence, no priority, no fairness. Needs a durable queue mechanism as usage scales.
 
 ## Project Structure
