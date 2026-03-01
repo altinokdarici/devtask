@@ -2,16 +2,14 @@
 
 ## Overview
 
-pnpm workspace monorepo with three apps and shared packages.
+pnpm workspace monorepo with two apps and shared packages.
 
 ```
 devtask/
 ├── apps/
 │   ├── cli/                  # CLI client — talks to control plane over HTTP
-│   ├── control-plane/        # standalone server — sessions, providers, relay
-│   └── agent-runtime/        # runs inside each node
+│   └── control-plane/        # standalone server — sessions, providers, SDK dispatch
 ├── packages/
-│   ├── protocol/             # shared message types + codec (node ↔ control plane)
 │   ├── api-types/            # shared API types (client ↔ control plane)
 │   └── config/               # shared configuration schema + loading
 ├── docs/
@@ -48,12 +46,12 @@ cli/
     │   └── cancel.ts         # devtask cancel <id>
     └── output/
         ├── table.ts          # session list formatting
-        └── log-stream.ts     # render SSE events to terminal
+        └── log-stream.ts     # render SDK message events to terminal
 ```
 
 ### apps/control-plane
 
-Standalone HTTP server. Manages sessions, provisions nodes, relays messages. Has no knowledge of what the agent is doing (PRs, tests, reviews are the agent's business).
+Standalone HTTP server. Manages sessions, provisions nodes, dispatches SDK queries. Has no knowledge of what the agent is doing (PRs, tests, reviews are the agent's business).
 
 ```
 control-plane/
@@ -64,45 +62,17 @@ control-plane/
     ├── types.ts              # internal types (SessionStore, error classes) + re-exports from api-types
     ├── session-manager.ts    # create, pause, resume, cancel sessions + pub/sub
     ├── session-store.ts      # persist/load session state (JSON on disk)
-    ├── dispatcher.ts         # assign sessions to nodes, consume agent messages
+    ├── dispatcher.ts         # assign sessions to nodes, call SDK query(), consume messages
     ├── api/
     │   ├── router.ts         # route definitions
-    │   ├── sessions.ts       # session CRUD + signal endpoints
+    │   ├── sessions.ts       # session CRUD + cancel endpoints
     │   └── events.ts         # SSE endpoint for streaming agent messages
     └── providers/
-        ├── provider.ts       # NodeProvider, NodeHandle, AgentProcess interfaces
-        └── local.ts          # LocalProvider — spawns agent as local child process
-```
-
-### apps/agent-runtime
-
-Runs inside each node. Currently a mock agent that emits realistic NDJSON messages to prove the pipeline works. Will be replaced with a real Claude Agent SDK integration.
-
-```
-agent-runtime/
-├── package.json
-├── tsconfig.json
-└── src/
-    ├── index.ts              # entry point — reads brief from argv, starts agent
-    ├── mock-agent.ts         # emits status + log messages with delays
-    └── stdin-handler.ts      # listens for signals (cancel) from control plane
+        ├── provider.ts       # NodeProvider, NodeHandle, SpawnFn interfaces
+        └── local.ts          # LocalProvider — spawns via child_process.spawn
 ```
 
 ## Packages
-
-### packages/protocol
-
-Shared between control plane and agent runtime. Defines the JSONL message format for stdin/stdout communication between control plane and nodes.
-
-```
-protocol/
-├── package.json
-├── tsconfig.json
-└── src/
-    ├── index.ts              # barrel re-export of all types + functions
-    ├── messages.ts           # AgentMessage, Command types
-    └── codec.ts              # encodeLine, decodeLine, createLineParser
-```
 
 ### packages/api-types
 
@@ -135,21 +105,17 @@ cli ──────────────► api-types
                   ► config
 
 control-plane ──► api-types
-                ► protocol
                 ► config
-
-agent-runtime ──► protocol
+                ► @anthropic-ai/claude-agent-sdk
 ```
 
 - `cli` and `control-plane` share `api-types` (REST API contract)
-- `control-plane` and `agent-runtime` share `protocol` (stdin/stdout contract)
 - `cli` and `control-plane` share `config`
-- `cli` and `agent-runtime` never depend on each other
+- `control-plane` depends on the Claude Agent SDK for dispatching queries
 
 ## Build & Deployment
 
-| Target        | Packages included                             | Runs where                                       |
-| ------------- | --------------------------------------------- | ------------------------------------------------ |
-| CLI           | cli + api-types + config                      | User's machine                                   |
-| Control plane | control-plane + api-types + protocol + config | Any machine (user's laptop, cloud, shared infra) |
-| Agent runtime | agent-runtime + protocol                      | Inside each node (Codespace)                     |
+| Target        | Packages included                  | Runs where                                       |
+| ------------- | ---------------------------------- | ------------------------------------------------ |
+| CLI           | cli + api-types + config           | User's machine                                   |
+| Control plane | control-plane + api-types + config | Any machine (user's laptop, cloud, shared infra) |
