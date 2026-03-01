@@ -10,11 +10,11 @@ We need a communication model that works across all platforms without requiring 
 
 Every platform already provides a way to execute a process remotely and stream its I/O:
 
-| Platform | Command |
-|---|---|
-| GitHub Codespace | `gh cs ssh -c <name> --` |
-| Docker | `docker exec -i <container>` |
-| Cloud VM | `ssh user@host` |
+| Platform         | Command                      |
+| ---------------- | ---------------------------- |
+| GitHub Codespace | `gh cs ssh -c <name> --`     |
+| Docker           | `docker exec -i <container>` |
+| Cloud VM         | `ssh user@host`              |
 
 The agent runtime runs as a child process on the node. The control plane talks to it through **stdin/stdout over the platform's native transport**. No servers, no ports, no tunnels.
 
@@ -134,15 +134,15 @@ for await (const message of query({
     systemPrompt: DEVTASK_AGENT_PROMPT,
     allowedTools: ["Read", "Edit", "Write", "Bash", "Glob", "Grep", "Task"],
     permissionMode: "acceptEdits",
-    resume: sessionId,  // for resuming after pause or review cycle
+    resume: sessionId, // for resuming after pause or review cycle
     agents: {
       planner: {
         description: "Creates step-by-step plans from task briefs.",
         prompt: PLANNER_PROMPT,
         tools: ["Read", "Glob", "Grep"],
-      }
-    }
-  }
+      },
+    },
+  },
 })) {
   // Write structured messages to stdout for the control plane
   emit(toAgentMessage(message));
@@ -178,10 +178,10 @@ Control Plane                          Node
 
 ## Why This Design
 
-| Decision | Rationale |
-|---|---|
-| stdin/stdout over native transport | Works behind any NAT. No servers, ports, or relay infra needed. |
-| Provider owns provisioning + communication | One interface, no separate transport layer to wire up. |
-| Newline-delimited JSON protocol | Simple, streamable, debuggable. Easy to parse in any language. |
-| Node stays alive until agent signals done | Agent owns its full lifecycle including PR reviews. |
-| SDK session resume | Agent picks up where it left off after pause or review idle. |
+| Decision                                   | Rationale                                                       |
+| ------------------------------------------ | --------------------------------------------------------------- |
+| stdin/stdout over native transport         | Works behind any NAT. No servers, ports, or relay infra needed. |
+| Provider owns provisioning + communication | One interface, no separate transport layer to wire up.          |
+| Newline-delimited JSON protocol            | Simple, streamable, debuggable. Easy to parse in any language.  |
+| Node stays alive until agent signals done  | Agent owns its full lifecycle including PR reviews.             |
+| SDK session resume                         | Agent picks up where it left off after pause or review idle.    |

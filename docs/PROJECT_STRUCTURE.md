@@ -148,8 +148,8 @@ agent-runtime ──► protocol
 
 ## Build & Deployment
 
-| Target | Packages included | Runs where |
-|---|---|---|
-| CLI | cli + api-types + config | User's machine |
+| Target        | Packages included                             | Runs where                                       |
+| ------------- | --------------------------------------------- | ------------------------------------------------ |
+| CLI           | cli + api-types + config                      | User's machine                                   |
 | Control plane | control-plane + api-types + protocol + config | Any machine (user's laptop, cloud, shared infra) |
-| Agent runtime | agent-runtime + protocol | Inside each node (Codespace) |
+| Agent runtime | agent-runtime + protocol                      | Inside each node (Codespace)                     |

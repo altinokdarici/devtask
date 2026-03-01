@@ -39,7 +39,7 @@ export class Dispatcher {
         sessionId,
         provider: session.provider,
       });
-    } catch (err) {
+    } catch {
       await this.manager.transition(sessionId, "failed");
       return;
     }
@@ -68,11 +68,7 @@ export class Dispatcher {
     await this.manager.cancel(sessionId);
   }
 
-  private consumeMessages(
-    sessionId: string,
-    handle: NodeHandle,
-    process: AgentProcess,
-  ): void {
+  private consumeMessages(sessionId: string, handle: NodeHandle, process: AgentProcess): void {
     (async () => {
       try {
         for await (const msg of process.messages) {
@@ -89,7 +85,7 @@ export class Dispatcher {
             }
           }
         }
-      } catch (err) {
+      } catch {
         try {
           await this.manager.transition(sessionId, "failed");
         } catch {
