@@ -35,21 +35,20 @@ Thin, stateless client. Calls the control plane REST API and streams SSE events.
 cli/
 ├── package.json
 ├── tsconfig.json
-├── src/
-│   ├── index.ts              # entry point, command registration
-│   ├── commands/
-│   │   ├── create.ts         # devtask create --brief "..."
-│   │   ├── list.ts           # devtask list
-│   │   ├── show.ts           # devtask show <id>
-│   │   ├── logs.ts           # devtask logs <id> (SSE stream)
-│   │   ├── pause.ts          # devtask pause <id>
-│   │   ├── resume.ts         # devtask resume <id>
-│   │   └── cancel.ts         # devtask cancel <id>
-│   ├── api-client.ts         # HTTP client for control plane REST API
-│   └── output/
-│       ├── table.ts          # session list formatting
-│       └── log-stream.ts     # render SSE events to terminal
-└── tests/
+└── src/
+    ├── index.ts              # entry point — citty command registration
+    ├── api-client.ts         # HTTP client for control plane REST API + SSE streaming
+    ├── commands/
+    │   ├── create.ts         # devtask create --brief "..."
+    │   ├── list.ts           # devtask list
+    │   ├── show.ts           # devtask show <id>
+    │   ├── logs.ts           # devtask logs <id> (SSE stream)
+    │   ├── pause.ts          # devtask pause <id>
+    │   ├── resume.ts         # devtask resume <id>
+    │   └── cancel.ts         # devtask cancel <id>
+    └── output/
+        ├── table.ts          # session list formatting
+        └── log-stream.ts     # render SSE events to terminal
 ```
 
 ### apps/control-plane
@@ -60,35 +59,33 @@ Standalone HTTP server. Manages sessions, provisions nodes, relays messages. Has
 control-plane/
 ├── package.json
 ├── tsconfig.json
-├── src/
-│   ├── index.ts              # server entry point
-│   ├── api/
-│   │   ├── router.ts         # route definitions
-│   │   ├── sessions.ts       # session CRUD endpoints
-│   │   └── events.ts         # SSE endpoint for streaming agent messages
-│   ├── session-manager.ts    # create, pause, resume, cancel sessions
-│   ├── session-store.ts      # persist/load session state (JSON on disk)
-│   ├── dispatcher.ts         # assign sessions to nodes, enforce concurrency
-│   └── providers/
-│       ├── provider.ts       # NodeProvider, NodeHandle, AgentProcess interfaces
-│       ├── codespace.ts      # GitHub Codespace implementation (shipping first)
-│       └── ...               # docker.ts, vm.ts (future)
-└── tests/
+└── src/
+    ├── index.ts              # server entry point
+    ├── types.ts              # internal types (SessionStore, error classes) + re-exports from api-types
+    ├── session-manager.ts    # create, pause, resume, cancel sessions + pub/sub
+    ├── session-store.ts      # persist/load session state (JSON on disk)
+    ├── dispatcher.ts         # assign sessions to nodes, consume agent messages
+    ├── api/
+    │   ├── router.ts         # route definitions
+    │   ├── sessions.ts       # session CRUD + signal endpoints
+    │   └── events.ts         # SSE endpoint for streaming agent messages
+    └── providers/
+        ├── provider.ts       # NodeProvider, NodeHandle, AgentProcess interfaces
+        └── local.ts          # LocalProvider — spawns agent as local child process
 ```
 
 ### apps/agent-runtime
 
-Runs inside each node (Codespace). Thin wrapper around the Claude Agent SDK. Receives a brief, runs `query()`, streams messages back over stdout/stdin. Owns its entire workflow — planning, coding, testing, git, PRs, reviews.
+Runs inside each node. Currently a mock agent that emits realistic NDJSON messages to prove the pipeline works. Will be replaced with a real Claude Agent SDK integration.
 
 ```
 agent-runtime/
 ├── package.json
 ├── tsconfig.json
-├── src/
-│   ├── index.ts              # entry point — reads brief, starts query(), streams messages
-│   ├── prompts.ts            # system prompt, planner prompt
-│   └── stdin-handler.ts      # listens for signals from control plane
-└── tests/
+└── src/
+    ├── index.ts              # entry point — reads brief from argv, starts agent
+    ├── mock-agent.ts         # emits status + log messages with delays
+    └── stdin-handler.ts      # listens for signals (cancel) from control plane
 ```
 
 ## Packages
@@ -102,22 +99,21 @@ protocol/
 ├── package.json
 ├── tsconfig.json
 └── src/
-    ├── messages.ts           # AgentMessage, Command, StatusUpdate, Question, etc.
-    └── codec.ts              # serialize/deserialize newline-delimited JSON
+    ├── index.ts              # barrel re-export of all types + functions
+    ├── messages.ts           # AgentMessage, Command types
+    └── codec.ts              # encodeLine, decodeLine, createLineParser
 ```
 
 ### packages/api-types
 
-Shared between clients (CLI, future web UI, bots) and control plane. Defines the REST API request/response types and SSE event types.
+Shared between clients (CLI, future web UI, bots) and control plane. Defines the REST API types.
 
 ```
 api-types/
 ├── package.json
 ├── tsconfig.json
 └── src/
-    ├── requests.ts           # CreateSession, PauseSession, Signal, etc.
-    ├── responses.ts          # Session, SessionList, etc.
-    └── events.ts             # SSE event types (log, status, question, etc.)
+    └── index.ts              # Session, SessionStatus, CreateSessionBody
 ```
 
 ### packages/config
@@ -129,8 +125,7 @@ config/
 ├── package.json
 ├── tsconfig.json
 └── src/
-    ├── index.ts              # load config, merge defaults
-    └── types.ts              # config schema
+    └── index.ts              # DevTaskConfig type + loadConfig()
 ```
 
 ## Dependency Graph
@@ -144,12 +139,11 @@ control-plane ──► api-types
                 ► config
 
 agent-runtime ──► protocol
-                ► config
 ```
 
 - `cli` and `control-plane` share `api-types` (REST API contract)
 - `control-plane` and `agent-runtime` share `protocol` (stdin/stdout contract)
-- All three share `config`
+- `cli` and `control-plane` share `config`
 - `cli` and `agent-runtime` never depend on each other
 
 ## Build & Deployment
@@ -158,4 +152,4 @@ agent-runtime ──► protocol
 |---|---|---|
 | CLI | cli + api-types + config | User's machine |
 | Control plane | control-plane + api-types + protocol + config | Any machine (user's laptop, cloud, shared infra) |
-| Agent runtime | agent-runtime + protocol + config | Inside each node (Codespace) |
+| Agent runtime | agent-runtime + protocol | Inside each node (Codespace) |
