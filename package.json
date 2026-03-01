@@ -7,9 +7,16 @@
     "node": ">=25"
   },
   "scripts": {
-    "test": "pnpm -r run test"
+    "test": "pnpm -r run test",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "devDependencies": {
-    "typescript": "^5.9.3"
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.0.2",
+    "prettier": "^3.8.1",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.56.1"
   }
 }
