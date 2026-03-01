@@ -7,18 +7,31 @@ import { SessionManager } from "./session-manager.ts";
 import { createFileStore } from "./session-store.ts";
 import { Dispatcher } from "./dispatcher.ts";
 import { createLocalProvider } from "./providers/local.ts";
+import { createCodespaceProvider } from "./providers/codespace.ts";
 import { createRouter } from "./api/router.ts";
+import type { NodeProvider } from "./providers/provider.ts";
 
 const config = loadConfig();
 
 const manager = new SessionManager(createFileStore());
 await manager.init();
 
-const agentEntry = path.resolve(
-  path.dirname(fileURLToPath(import.meta.url)),
-  "../../agent-runtime/src/index.ts",
-);
-const provider = createLocalProvider("node", ["--experimental-strip-types", agentEntry]);
+function buildProvider(): NodeProvider {
+  if (config.provider.default === "codespace") {
+    return createCodespaceProvider({
+      repo: config.codespace.repo,
+      machine: config.codespace.machine,
+    });
+  }
+
+  const agentEntry = path.resolve(
+    path.dirname(fileURLToPath(import.meta.url)),
+    "../../agent-runtime/src/index.ts",
+  );
+  return createLocalProvider("node", ["--experimental-strip-types", agentEntry]);
+}
+
+const provider = buildProvider();
 const dispatcher = new Dispatcher(manager, provider);
 dispatcher.start();
 

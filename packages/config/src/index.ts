@@ -6,6 +6,10 @@ export interface DevTaskConfig {
   provider: {
     default: string;
   };
+  codespace: {
+    repo: string;
+    machine: string;
+  };
 }
 
 export function loadConfig(): DevTaskConfig {
@@ -16,6 +20,10 @@ export function loadConfig(): DevTaskConfig {
     },
     provider: {
       default: process.env["DEVTASK_PROVIDER"] ?? "local",
+    },
+    codespace: {
+      repo: process.env["DEVTASK_CODESPACE_REPO"] ?? "",
+      machine: process.env["DEVTASK_CODESPACE_MACHINE"] ?? "basicLinux32gb",
     },
   };
 }
