@@ -21,7 +21,7 @@ interface MockProviderOptions {
 }
 
 function createMockProvider(
-  opts: MockProviderOptions,
+  _opts: MockProviderOptions,
 ): NodeProvider & { cancelled: boolean } {
   const result = {
     cancelled: false,

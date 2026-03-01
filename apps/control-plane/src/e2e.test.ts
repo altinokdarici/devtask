@@ -5,7 +5,6 @@ import { serve } from "@hono/node-server";
 import type { ServerType } from "@hono/node-server";
 import { SessionManager } from "./session-manager.ts";
 import { Dispatcher } from "./dispatcher.ts";
-import { createLocalProvider } from "./providers/local.ts";
 import { createRouter } from "./api/router.ts";
 import type { Session } from "./types.ts";
 import type { SessionStore } from "./types.ts";

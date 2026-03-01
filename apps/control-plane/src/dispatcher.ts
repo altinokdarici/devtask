@@ -1,4 +1,4 @@
-import { query, type SDKMessage, type Query } from "@anthropic-ai/claude-agent-sdk";
+import { query, type Query } from "@anthropic-ai/claude-agent-sdk";
 import type { SessionManager } from "./session-manager.ts";
 import type { NodeProvider, NodeHandle } from "./providers/provider.ts";
 
