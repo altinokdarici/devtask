@@ -7,11 +7,13 @@ import {
   SessionNotFoundError,
   InvalidTransitionError,
 } from "./types.ts";
+import type { AgentMessage } from "./protocol/messages.ts";
 
 export type SessionEvent =
   | { type: "created"; session: Session }
   | { type: "updated"; session: Session }
-  | { type: "deleted"; sessionId: string };
+  | { type: "deleted"; sessionId: string }
+  | { type: "agent_message"; sessionId: string; message: AgentMessage };
 
 type Listener = (event: SessionEvent) => void;
 
@@ -103,11 +105,21 @@ export class SessionManager {
     };
   }
 
+  emitAgentMessage(sessionId: string, message: AgentMessage): void {
+    this.get(sessionId); // verify session exists
+    this.emit(sessionId, { type: "agent_message", sessionId, message });
+  }
+
   private emit(id: string, event: SessionEvent): void {
     const set = this.listeners.get(id);
-    if (!set) return;
-    for (const fn of set) {
-      fn(event);
+    if (set) {
+      for (const fn of set) fn(event);
+    }
+    if (id !== "*") {
+      const global = this.listeners.get("*");
+      if (global) {
+        for (const fn of global) fn(event);
+      }
     }
   }
 }

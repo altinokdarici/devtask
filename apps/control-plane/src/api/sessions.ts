@@ -1,9 +1,11 @@
 import { Hono } from "hono";
 import type { SessionManager } from "../session-manager.ts";
+import type { Dispatcher } from "../dispatcher.ts";
+import type { Command } from "../protocol/messages.ts";
 import type { CreateSessionBody } from "../types.ts";
 import { SessionNotFoundError, InvalidTransitionError } from "../types.ts";
 
-export function sessionRoutes(manager: SessionManager): Hono {
+export function sessionRoutes(manager: SessionManager, dispatcher: Dispatcher): Hono {
   const app = new Hono();
 
   app.post("/", async (c) => {
@@ -52,7 +54,8 @@ export function sessionRoutes(manager: SessionManager): Hono {
 
   app.post("/:id/cancel", async (c) => {
     try {
-      const session = await manager.cancel(c.req.param("id"));
+      await dispatcher.cancel(c.req.param("id"));
+      const session = manager.get(c.req.param("id"));
       return c.json(session);
     } catch (e) {
       if (e instanceof SessionNotFoundError) return c.json({ error: e.message }, 404);
@@ -64,9 +67,9 @@ export function sessionRoutes(manager: SessionManager): Hono {
   app.post("/:id/signal", async (c) => {
     try {
       manager.get(c.req.param("id")); // verify it exists
-      const signal = await c.req.json();
-      // TODO: forward signal to the agent process once node providers are wired
-      return c.json({ ok: true, signal });
+      const command = (await c.req.json()) as Command;
+      await dispatcher.signal(c.req.param("id"), command);
+      return c.json({ ok: true, signal: command });
     } catch (e) {
       if (e instanceof SessionNotFoundError) return c.json({ error: e.message }, 404);
       throw e;
