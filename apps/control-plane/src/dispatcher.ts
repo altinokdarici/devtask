@@ -1,6 +1,7 @@
 import { query, type Query } from "@anthropic-ai/claude-agent-sdk";
 import type { SessionManager } from "./session-manager.ts";
-import type { NodeProvider, NodeHandle } from "./providers/provider.ts";
+import type { NodeHandle } from "./providers/provider.ts";
+import type { ProviderRegistry } from "./providers/registry.ts";
 
 interface ActiveSession {
   handle: NodeHandle;
@@ -11,11 +12,11 @@ interface ActiveSession {
 export class Dispatcher {
   private active = new Map<string, ActiveSession>();
   private manager: SessionManager;
-  private provider: NodeProvider;
+  private providers: ProviderRegistry;
 
-  constructor(manager: SessionManager, provider: NodeProvider) {
+  constructor(manager: SessionManager, providers: ProviderRegistry) {
     this.manager = manager;
-    this.provider = provider;
+    this.providers = providers;
   }
 
   start(): void {
@@ -36,7 +37,8 @@ export class Dispatcher {
 
     let handle: NodeHandle;
     try {
-      handle = await this.provider.provision({
+      const provider = this.providers.get(session.provider);
+      handle = await provider.provision({
         sessionId,
         provider: session.provider,
       });

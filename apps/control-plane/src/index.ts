@@ -5,6 +5,7 @@ import { SessionManager } from "./session-manager.ts";
 import { createFileStore } from "./session-store.ts";
 import { Dispatcher } from "./dispatcher.ts";
 import { createLocalProvider } from "./providers/local.ts";
+import { ProviderRegistry } from "./providers/registry.ts";
 import { createRouter } from "./api/router.ts";
 
 const config = loadConfig();
@@ -12,8 +13,10 @@ const config = loadConfig();
 const manager = new SessionManager(createFileStore());
 await manager.init();
 
-const provider = createLocalProvider();
-const dispatcher = new Dispatcher(manager, provider);
+const providers = new ProviderRegistry();
+providers.register("local", createLocalProvider());
+
+const dispatcher = new Dispatcher(manager, providers);
 dispatcher.start();
 
 const app = new Hono();

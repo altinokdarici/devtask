@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { SessionManager, type SessionEvent } from "./session-manager.ts";
 import { Dispatcher } from "./dispatcher.ts";
 import type { NodeProvider, NodeHandle } from "./providers/provider.ts";
+import { ProviderRegistry } from "./providers/registry.ts";
 import type { SDKMessage } from "@anthropic-ai/claude-agent-sdk";
 import type { SessionStore } from "./types.ts";
 
@@ -41,13 +42,19 @@ function createMockProvider(_opts: MockProviderOptions): NodeProvider & { cancel
 // controls the message sequence. The approach: subclass Dispatcher to inject
 // a mock query generator.
 
+function createRegistry(provider: NodeProvider): ProviderRegistry {
+  const registry = new ProviderRegistry();
+  registry.register("codespace", provider);
+  return registry;
+}
+
 class TestableDispatcher extends Dispatcher {
   private mockMessages: SDKMessage[];
   private mockKeepAlive: boolean;
   private mockAbortController: AbortController | null = null;
 
   constructor(manager: SessionManager, provider: NodeProvider, opts: MockProviderOptions) {
-    super(manager, provider);
+    super(manager, createRegistry(provider));
     this.mockMessages = opts.messages;
     this.mockKeepAlive = opts.keepAlive ?? false;
   }
@@ -58,12 +65,13 @@ class TestableDispatcher extends Dispatcher {
     if (session.status !== "queued") return;
 
     const manager = (this as unknown as { manager: SessionManager }).manager;
-    const provider = (this as unknown as { provider: NodeProvider }).provider;
+    const providers = (this as unknown as { providers: ProviderRegistry }).providers;
 
     await manager.transition(sessionId, "provisioning");
 
     let handle: NodeHandle;
     try {
+      const provider = providers.get(session.provider);
       handle = await provider.provision({ sessionId, provider: session.provider });
     } catch {
       await manager.transition(sessionId, "failed");
@@ -104,26 +112,6 @@ class TestableDispatcher extends Dispatcher {
       }
     ).consumeMessages.bind(this);
     consumeMessages(sessionId, handle, mockQuery);
-  }
-
-  async cancel(sessionId: string): Promise<void> {
-    const active = (
-      this as unknown as {
-        active: Map<
-          string,
-          { handle: NodeHandle; query: { close: () => void }; abortController: AbortController }
-        >;
-      }
-    ).active;
-    const entry = active.get(sessionId);
-    if (entry) {
-      entry.abortController.abort();
-      entry.query.close();
-      await entry.handle.destroy();
-      active.delete(sessionId);
-    }
-    const manager = (this as unknown as { manager: SessionManager }).manager;
-    await manager.cancel(sessionId);
   }
 }
 
