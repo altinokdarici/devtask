@@ -17,30 +17,27 @@ function createMemoryStore(): SessionStore {
 }
 
 interface MockProviderOptions {
-  messages: SDKMessage[];
+  turns: SDKMessage[][];
   keepAlive?: boolean;
 }
 
-function createMockProvider(_opts: MockProviderOptions): NodeProvider & { cancelled: boolean } {
+function createMockProvider(_opts: MockProviderOptions): NodeProvider & { destroyed: boolean } {
   const result = {
-    cancelled: false,
+    destroyed: false,
     async provision() {
       return {
         nodeId: "mock-node-1",
         spawnFn() {
           throw new Error("spawnFn should not be called directly in tests");
         },
-        async destroy() {},
+        async destroy() {
+          result.destroyed = true;
+        },
       } as NodeHandle;
     },
   };
   return result;
 }
-
-// We need to mock the SDK's query() function. Since the dispatcher imports it
-// directly, we test through the full dispatch flow using a mock provider that
-// controls the message sequence. The approach: subclass Dispatcher to inject
-// a mock query generator.
 
 function createRegistry(provider: NodeProvider): ProviderRegistry {
   const registry = new ProviderRegistry();
@@ -49,17 +46,17 @@ function createRegistry(provider: NodeProvider): ProviderRegistry {
 }
 
 class TestableDispatcher extends Dispatcher {
-  private mockMessages: SDKMessage[];
+  private turns: SDKMessage[][];
+  private turnIndex = 0;
   private mockKeepAlive: boolean;
   private mockAbortController: AbortController | null = null;
 
   constructor(manager: SessionManager, provider: NodeProvider, opts: MockProviderOptions) {
     super(manager, createRegistry(provider));
-    this.mockMessages = opts.messages;
+    this.turns = opts.turns;
     this.mockKeepAlive = opts.keepAlive ?? false;
   }
 
-  // Override dispatch to use our mock query instead of the real SDK
   async dispatch(sessionId: string): Promise<void> {
     const session = (this as unknown as { manager: SessionManager }).manager.get(sessionId);
     if (session.status !== "queued") {
@@ -85,10 +82,10 @@ class TestableDispatcher extends Dispatcher {
 
     const abortController = new AbortController();
     this.mockAbortController = abortController;
-    const messages = this.mockMessages;
+    const messages = this.turns[this.turnIndex] ?? [];
+    this.turnIndex++;
     const keepAlive = this.mockKeepAlive;
 
-    // Create a mock async generator that yields our canned messages
     const mockQuery = (async function* () {
       for (const msg of messages) {
         if (abortController.signal.aborted) {
@@ -108,16 +105,60 @@ class TestableDispatcher extends Dispatcher {
     };
 
     const active = (this as unknown as { active: Map<string, unknown> }).active;
-    active.set(sessionId, { handle, query: mockQuery, abortController });
+    active.set(sessionId, { handle, query: mockQuery, abortController, agentSessionId: null });
 
-    // Call consumeMessages via the private method
     const consumeMessages = (
       this as unknown as {
-        consumeMessages: (id: string, h: NodeHandle, q: unknown) => void;
+        consumeMessages: (id: string, q: unknown) => void;
       }
     ).consumeMessages.bind(this);
-    consumeMessages(sessionId, handle, mockQuery);
+    consumeMessages(sessionId, mockQuery);
   }
+
+  async reply(sessionId: string, _message: string): Promise<void> {
+    const manager = (this as unknown as { manager: SessionManager }).manager;
+    const active = (this as unknown as { active: Map<string, ActiveEntry> }).active;
+    const entry = active.get(sessionId);
+    if (!entry) {
+      throw new Error(`No active session for ${sessionId}`);
+    }
+
+    await manager.transition(sessionId, "running");
+
+    const abortController = new AbortController();
+    entry.abortController = abortController;
+    const messages = this.turns[this.turnIndex] ?? [];
+    this.turnIndex++;
+
+    const mockQuery = (async function* () {
+      for (const msg of messages) {
+        if (abortController.signal.aborted) {
+          return;
+        }
+        await new Promise((r) => setTimeout(r, 1));
+        yield msg;
+      }
+    })() as unknown as import("@anthropic-ai/claude-agent-sdk").Query;
+    mockQuery.close = () => {
+      abortController.abort();
+    };
+
+    entry.query = mockQuery;
+
+    const consumeMessages = (
+      this as unknown as {
+        consumeMessages: (id: string, q: unknown) => void;
+      }
+    ).consumeMessages.bind(this);
+    consumeMessages(sessionId, mockQuery);
+  }
+}
+
+interface ActiveEntry {
+  handle: NodeHandle;
+  query: unknown;
+  abortController: AbortController;
+  agentSessionId: string | null;
 }
 
 describe("Dispatcher", () => {
@@ -128,23 +169,25 @@ describe("Dispatcher", () => {
     await manager.init();
   });
 
-  it("dispatches a queued session through provisioning → running → done", async () => {
-    const mockProvider = createMockProvider({ messages: [] });
+  it("dispatches a queued session through provisioning → running → waiting_for_input", async () => {
+    const mockProvider = createMockProvider({ turns: [] });
 
     const dispatcher = new TestableDispatcher(manager, mockProvider, {
-      messages: [
-        { type: "system", subtype: "init", session_id: "sdk-session-1" } as unknown as SDKMessage,
-        {
-          type: "assistant",
-          message: { content: [{ type: "text", text: "working" }] },
-        } as unknown as SDKMessage,
-        {
-          type: "result",
-          subtype: "success",
-          is_error: false,
-          duration_ms: 100,
-          total_cost_usd: 0.01,
-        } as unknown as SDKMessage,
+      turns: [
+        [
+          { type: "system", subtype: "init", session_id: "sdk-session-1" } as unknown as SDKMessage,
+          {
+            type: "assistant",
+            message: { content: [{ type: "text", text: "working" }] },
+          } as unknown as SDKMessage,
+          {
+            type: "result",
+            subtype: "success",
+            is_error: false,
+            duration_ms: 100,
+            total_cost_usd: 0.01,
+          } as unknown as SDKMessage,
+        ],
       ],
     });
     dispatcher.start();
@@ -154,23 +197,98 @@ describe("Dispatcher", () => {
     await new Promise((r) => setTimeout(r, 50));
 
     const updated = manager.get(session.id);
-    assert.equal(updated.status, "done");
+    assert.equal(updated.status, "waiting_for_input");
     assert.equal(updated.nodeId, "mock-node-1");
     assert.equal(updated.agentSessionId, "sdk-session-1");
   });
 
-  it("transitions to failed when result has error subtype", async () => {
-    const mockProvider = createMockProvider({ messages: [] });
+  it("reply resumes and goes back to waiting_for_input", async () => {
+    const mockProvider = createMockProvider({ turns: [] });
 
     const dispatcher = new TestableDispatcher(manager, mockProvider, {
-      messages: [
-        { type: "system", subtype: "init" } as SDKMessage,
-        {
-          type: "result",
-          subtype: "error_during_execution",
-          is_error: true,
-          errors: ["boom"],
-        } as unknown as SDKMessage,
+      turns: [
+        [
+          { type: "system", subtype: "init", session_id: "sdk-session-1" } as unknown as SDKMessage,
+          { type: "result", subtype: "success", is_error: false } as unknown as SDKMessage,
+        ],
+        [
+          {
+            type: "assistant",
+            message: { content: [{ type: "text", text: "continued" }] },
+          } as unknown as SDKMessage,
+          { type: "result", subtype: "success", is_error: false } as unknown as SDKMessage,
+        ],
+      ],
+    });
+    dispatcher.start();
+
+    const session = await manager.create({ brief: "multi-turn" });
+    await new Promise((r) => setTimeout(r, 50));
+    assert.equal(manager.get(session.id).status, "waiting_for_input");
+
+    await dispatcher.reply(session.id, "continue please");
+    await new Promise((r) => setTimeout(r, 50));
+    assert.equal(manager.get(session.id).status, "waiting_for_input");
+  });
+
+  it("complete destroys handle and transitions to done", async () => {
+    const mockProvider = createMockProvider({ turns: [] });
+
+    const dispatcher = new TestableDispatcher(manager, mockProvider, {
+      turns: [
+        [
+          { type: "system", subtype: "init", session_id: "sdk-session-1" } as unknown as SDKMessage,
+          { type: "result", subtype: "success", is_error: false } as unknown as SDKMessage,
+        ],
+      ],
+    });
+    dispatcher.start();
+
+    const session = await manager.create({ brief: "complete me" });
+    await new Promise((r) => setTimeout(r, 50));
+    assert.equal(manager.get(session.id).status, "waiting_for_input");
+
+    await dispatcher.complete(session.id);
+    assert.equal(manager.get(session.id).status, "done");
+    assert.equal(mockProvider.destroyed, true);
+  });
+
+  it("cancel from waiting_for_input works", async () => {
+    const mockProvider = createMockProvider({ turns: [] });
+
+    const dispatcher = new TestableDispatcher(manager, mockProvider, {
+      turns: [
+        [
+          { type: "system", subtype: "init", session_id: "sdk-session-1" } as unknown as SDKMessage,
+          { type: "result", subtype: "success", is_error: false } as unknown as SDKMessage,
+        ],
+      ],
+    });
+    dispatcher.start();
+
+    const session = await manager.create({ brief: "cancel me" });
+    await new Promise((r) => setTimeout(r, 50));
+    assert.equal(manager.get(session.id).status, "waiting_for_input");
+
+    await dispatcher.cancel(session.id);
+    assert.equal(manager.get(session.id).status, "cancelled");
+    assert.equal(mockProvider.destroyed, true);
+  });
+
+  it("transitions to failed when result has error subtype", async () => {
+    const mockProvider = createMockProvider({ turns: [] });
+
+    const dispatcher = new TestableDispatcher(manager, mockProvider, {
+      turns: [
+        [
+          { type: "system", subtype: "init" } as SDKMessage,
+          {
+            type: "result",
+            subtype: "error_during_execution",
+            is_error: true,
+            errors: ["boom"],
+          } as unknown as SDKMessage,
+        ],
       ],
     });
     dispatcher.start();
@@ -181,10 +299,11 @@ describe("Dispatcher", () => {
 
     const updated = manager.get(session.id);
     assert.equal(updated.status, "failed");
+    assert.equal(mockProvider.destroyed, true);
   });
 
   it("relays SDK messages through pub/sub", async () => {
-    const mockProvider = createMockProvider({ messages: [] });
+    const mockProvider = createMockProvider({ turns: [] });
 
     const messages: SDKMessage[] = [
       {
@@ -199,7 +318,7 @@ describe("Dispatcher", () => {
       { type: "result", subtype: "success", is_error: false } as unknown as SDKMessage,
     ];
 
-    const dispatcher = new TestableDispatcher(manager, mockProvider, { messages });
+    const dispatcher = new TestableDispatcher(manager, mockProvider, { turns: [messages] });
     dispatcher.start();
 
     const session = await manager.create({ brief: "test" });
@@ -219,10 +338,10 @@ describe("Dispatcher", () => {
   });
 
   it("cancel aborts the query and transitions to cancelled", async () => {
-    const mockProvider = createMockProvider({ messages: [] });
+    const mockProvider = createMockProvider({ turns: [] });
 
     const dispatcher = new TestableDispatcher(manager, mockProvider, {
-      messages: [{ type: "system", subtype: "init" } as SDKMessage],
+      turns: [[{ type: "system", subtype: "init" } as SDKMessage]],
       keepAlive: true,
     });
     dispatcher.start();
@@ -246,7 +365,7 @@ describe("Dispatcher", () => {
     };
 
     const dispatcher = new TestableDispatcher(manager, failingProvider, {
-      messages: [],
+      turns: [],
     });
     dispatcher.start();
 

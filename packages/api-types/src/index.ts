@@ -3,6 +3,7 @@ export type SessionStatus =
   | "provisioning"
   | "running"
   | "paused"
+  | "waiting_for_input"
   | "done"
   | "failed"
   | "cancelled";
@@ -23,4 +24,8 @@ export interface CreateSessionBody {
   brief: string;
   provider?: string;
   maxRetries?: number;
+}
+
+export interface ReplyBody {
+  message: string;
 }

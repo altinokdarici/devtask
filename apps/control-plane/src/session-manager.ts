@@ -16,8 +16,9 @@ type Listener = (event: SessionEvent) => void;
 const VALID_TRANSITIONS: Record<string, SessionStatus[]> = {
   queued: ["provisioning", "cancelled"],
   provisioning: ["running", "failed", "cancelled"],
-  running: ["paused", "done", "failed", "cancelled"],
+  running: ["paused", "waiting_for_input", "done", "failed", "cancelled"],
   paused: ["running", "cancelled"],
+  waiting_for_input: ["running", "done", "cancelled"],
 };
 
 export class SessionManager {
@@ -104,6 +105,14 @@ export class SessionManager {
 
   async cancel(id: string): Promise<Session> {
     return this.transition(id, "cancelled");
+  }
+
+  async waitForInput(id: string): Promise<Session> {
+    return this.transition(id, "waiting_for_input");
+  }
+
+  async complete(id: string): Promise<Session> {
+    return this.transition(id, "done");
   }
 
   subscribe(id: string, listener: Listener): () => void {

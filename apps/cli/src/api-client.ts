@@ -47,6 +47,18 @@ export async function cancelSession(id: string): Promise<Session> {
   return request<Session>(`/sessions/${id}/cancel`, { method: "POST" });
 }
 
+export async function replyToSession(id: string, message: string): Promise<Session> {
+  return request<Session>(`/sessions/${id}/reply`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message }),
+  });
+}
+
+export async function completeSession(id: string): Promise<Session> {
+  return request<Session>(`/sessions/${id}/complete`, { method: "POST" });
+}
+
 export async function streamEvents(
   id: string,
   onEvent: (event: string, data: string) => void,

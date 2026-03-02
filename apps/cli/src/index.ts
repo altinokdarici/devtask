@@ -8,6 +8,8 @@ import { logsCommand } from "./commands/logs.ts";
 import { pauseCommand } from "./commands/pause.ts";
 import { resumeCommand } from "./commands/resume.ts";
 import { cancelCommand } from "./commands/cancel.ts";
+import { replyCommand } from "./commands/reply.ts";
+import { completeCommand } from "./commands/complete.ts";
 
 const config = loadConfig();
 setBaseUrl(`http://localhost:${config.controlPlane.port}`);
@@ -26,6 +28,8 @@ const main = defineCommand({
     pause: pauseCommand,
     resume: resumeCommand,
     cancel: cancelCommand,
+    reply: replyCommand,
+    complete: completeCommand,
   },
 });
 
