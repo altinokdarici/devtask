@@ -1,4 +1,5 @@
 import type { Session } from "@devtask/api-types";
+import { Link, useParams } from "@tanstack/react-router";
 import { useSessionEvents } from "../hooks/use-session-events.ts";
 import { SessionStatusBadge } from "./session-status-badge.tsx";
 import { AgentMessageLog } from "./agent-message-log.tsx";
@@ -6,16 +7,10 @@ import { ReplyForm } from "./reply-form.tsx";
 import { api } from "../api-client.ts";
 import { Button } from "./ui/button.tsx";
 import { Card, CardContent } from "./ui/card.tsx";
+import { router } from "../routes.ts";
 
-export function SessionDetail({
-  session,
-  onBack,
-  onRefresh,
-}: {
-  session: Session;
-  onBack: () => void;
-  onRefresh: () => void;
-}) {
+export function SessionDetail({ session }: { session: Session }) {
+  const { projectId } = useParams({ strict: false });
   const { currentStatus, messages } = useSessionEvents(session);
 
   const isActive =
@@ -23,18 +18,20 @@ export function SessionDetail({
 
   async function handleCancel() {
     await api.cancelSession(session.id);
-    onRefresh();
+    router.invalidate();
   }
 
   async function handleComplete() {
     await api.completeSession(session.id);
-    onRefresh();
+    router.invalidate();
   }
 
   return (
     <div className="space-y-6">
-      <Button variant="ghost" size="sm" onClick={onBack}>
-        &larr; Back to sessions
+      <Button variant="ghost" size="sm" asChild>
+        <Link to="/projects/$projectId" params={{ projectId: projectId! }}>
+          &larr; Back to sessions
+        </Link>
       </Button>
 
       <Card>
@@ -76,7 +73,7 @@ export function SessionDetail({
       {currentStatus === "waiting_for_input" && (
         <div>
           <h3 className="text-sm font-semibold mb-2">Reply</h3>
-          <ReplyForm sessionId={session.id} onReplied={onRefresh} />
+          <ReplyForm sessionId={session.id} onReplied={() => router.invalidate()} />
         </div>
       )}
 

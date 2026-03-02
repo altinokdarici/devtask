@@ -67,7 +67,7 @@ describe("api-client", () => {
       assert.deepEqual(events[1], ["agent_message", '{"type":"text"}']);
 
       const [url, init] = mockFetch.mock.calls[0].arguments;
-      assert.equal(url, `${TEST_BASE_URL}/sessions/sess-1/events`);
+      assert.equal(url, `${TEST_BASE_URL}/api/sessions/sess-1/events`);
       assert.equal(init?.signal, undefined);
     });
 

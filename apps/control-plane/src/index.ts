@@ -22,7 +22,7 @@ dispatcher.start();
 const app = new Hono();
 
 app.get("/health", (c) => c.json({ status: "ok" }));
-app.route("/", createRouter(sessionManager, projectManager, dispatcher));
+app.route("/api", createRouter(sessionManager, projectManager, dispatcher));
 
 serve({ fetch: app.fetch, port: config.controlPlane.port }, () => {
   console.log(`control-plane listening on :${config.controlPlane.port}`);

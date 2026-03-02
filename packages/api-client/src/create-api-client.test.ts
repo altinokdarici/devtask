@@ -57,7 +57,7 @@ describe("createApiClient", () => {
 
       assert.equal(mockFetch.mock.callCount(), 1);
       const [url, init] = mockFetch.mock.calls[0].arguments;
-      assert.equal(url, `${TEST_BASE_URL}/sessions`);
+      assert.equal(url, `${TEST_BASE_URL}/api/sessions`);
       assert.equal(init?.method, "POST");
       const headers = init?.headers as Record<string, string>;
       assert.equal(headers?.["Content-Type"], "application/json");
@@ -88,7 +88,7 @@ describe("createApiClient", () => {
 
       assert.equal(mockFetch.mock.callCount(), 1);
       const [url] = mockFetch.mock.calls[0].arguments;
-      assert.equal(url, `${TEST_BASE_URL}/sessions`);
+      assert.equal(url, `${TEST_BASE_URL}/api/sessions`);
       assert.deepEqual(result, sessions);
     });
   });
@@ -101,7 +101,7 @@ describe("createApiClient", () => {
       const result = await api.getSession("sess-1");
 
       const [url] = mockFetch.mock.calls[0].arguments;
-      assert.equal(url, `${TEST_BASE_URL}/sessions/sess-1`);
+      assert.equal(url, `${TEST_BASE_URL}/api/sessions/sess-1`);
       assert.deepEqual(result, fakeSession);
     });
 
@@ -124,7 +124,7 @@ describe("createApiClient", () => {
       const result = await api.cancelSession("sess-1");
 
       const [url, init] = mockFetch.mock.calls[0].arguments;
-      assert.equal(url, `${TEST_BASE_URL}/sessions/sess-1/cancel`);
+      assert.equal(url, `${TEST_BASE_URL}/api/sessions/sess-1/cancel`);
       assert.equal(init?.method, "POST");
       assert.equal(result.status, "cancelled");
     });
@@ -139,7 +139,7 @@ describe("createApiClient", () => {
       const result = await api.replyToSession("sess-1", "continue please");
 
       const [url, init] = mockFetch.mock.calls[0].arguments;
-      assert.equal(url, `${TEST_BASE_URL}/sessions/sess-1/reply`);
+      assert.equal(url, `${TEST_BASE_URL}/api/sessions/sess-1/reply`);
       assert.equal(init?.method, "POST");
       const headers = init?.headers as Record<string, string>;
       assert.equal(headers?.["Content-Type"], "application/json");
@@ -157,7 +157,7 @@ describe("createApiClient", () => {
       const result = await api.completeSession("sess-1");
 
       const [url, init] = mockFetch.mock.calls[0].arguments;
-      assert.equal(url, `${TEST_BASE_URL}/sessions/sess-1/complete`);
+      assert.equal(url, `${TEST_BASE_URL}/api/sessions/sess-1/complete`);
       assert.equal(init?.method, "POST");
       assert.equal(result.status, "done");
     });
@@ -175,7 +175,7 @@ describe("createApiClient", () => {
 
       assert.equal(mockFetch.mock.callCount(), 1);
       const [url, init] = mockFetch.mock.calls[0].arguments;
-      assert.equal(url, `${TEST_BASE_URL}/projects`);
+      assert.equal(url, `${TEST_BASE_URL}/api/projects`);
       assert.equal(init?.method, "POST");
       const headers = init?.headers as Record<string, string>;
       assert.equal(headers?.["Content-Type"], "application/json");
@@ -192,7 +192,7 @@ describe("createApiClient", () => {
       const result = await api.listProjects();
 
       const [url] = mockFetch.mock.calls[0].arguments;
-      assert.equal(url, `${TEST_BASE_URL}/projects`);
+      assert.equal(url, `${TEST_BASE_URL}/api/projects`);
       assert.deepEqual(result, projects);
     });
   });
@@ -205,7 +205,7 @@ describe("createApiClient", () => {
       const result = await api.getProject("proj-1");
 
       const [url] = mockFetch.mock.calls[0].arguments;
-      assert.equal(url, `${TEST_BASE_URL}/projects/proj-1`);
+      assert.equal(url, `${TEST_BASE_URL}/api/projects/proj-1`);
       assert.deepEqual(result, fakeProject);
     });
 
@@ -227,7 +227,7 @@ describe("createApiClient", () => {
       await api.deleteProject("proj-1");
 
       const [url, init] = mockFetch.mock.calls[0].arguments;
-      assert.equal(url, `${TEST_BASE_URL}/projects/proj-1`);
+      assert.equal(url, `${TEST_BASE_URL}/api/projects/proj-1`);
       assert.equal(init?.method, "DELETE");
     });
   });
