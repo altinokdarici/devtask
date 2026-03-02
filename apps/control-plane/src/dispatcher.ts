@@ -48,6 +48,7 @@ export class Dispatcher {
     }
 
     await this.manager.transition(sessionId, "running");
+    await this.manager.update(sessionId, { nodeId: handle.nodeId });
 
     const abortController = new AbortController();
     const q = query({
@@ -78,7 +79,13 @@ export class Dispatcher {
   private consumeMessages(sessionId: string, handle: NodeHandle, q: Query): void {
     (async () => {
       try {
+        let agentSessionIdCaptured = false;
         for await (const msg of q) {
+          if ("session_id" in msg && msg.session_id && !agentSessionIdCaptured) {
+            await this.manager.update(sessionId, { agentSessionId: msg.session_id as string });
+            agentSessionIdCaptured = true;
+          }
+
           this.manager.emitAgentMessage(sessionId, msg);
 
           if (msg.type === "result") {

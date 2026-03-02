@@ -69,6 +69,7 @@ class MockDispatcher extends Dispatcher {
     }
 
     await manager.transition(sessionId, "running");
+    await manager.update(sessionId, { nodeId: handle.nodeId });
 
     const abortController = new AbortController();
     const messages = this.mockMessages;
