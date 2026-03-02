@@ -37,7 +37,7 @@ The control plane has no knowledge of what the agent is doing (PRs, tests, git, 
 
 **Control plane owns:**
 
-- Session lifecycle (create, pause, resume, cancel, done, failed)
+- Session lifecycle (create, cancel, done, failed, multi-turn interaction)
 - Node provisioning and teardown via the provider interface
 - Dispatch and concurrency (queue tasks, enforce limits)
 - Message relay — streams SDK messages to clients via SSE
@@ -56,8 +56,8 @@ devtask create --brief "Add unit tests for auth module"
 devtask list
 devtask show <id>
 devtask logs <id>
-devtask pause <id>
-devtask resume <id>
+devtask reply <id> --message "Use vitest instead of jest"
+devtask complete <id>
 devtask cancel <id>
 ```
 
@@ -77,17 +77,24 @@ The control plane calls `query()` from `@anthropic-ai/claude-agent-sdk` directly
 
 ## Session Lifecycle
 
-From the control plane's perspective, sessions are simple:
+Sessions support multi-turn interaction. When the agent finishes a turn, the session moves to `waiting_for_input` so the user can review, reply with feedback, or mark the session as complete.
 
 ```
-    QUEUED ──► PROVISIONING ──► RUNNING ──► DONE
-                                  │
-                               PAUSED
-                               FAILED
+    QUEUED ──► PROVISIONING ──► RUNNING ──► WAITING_FOR_INPUT
+                                  │               │    │
+                                  │          reply ▼    │ complete
+                                  │          RUNNING    ▼
+                               FAILED                  DONE
                                CANCELLED
 ```
 
-The control plane doesn't know or care about PRs, reviews, tests, or any agent-internal states. `RUNNING` means the agent is working. `DONE` means the SDK returned a `result` message with `subtype: "success"`. Everything in between is the agent's business.
+- `RUNNING` — the agent is actively working (consuming SDK messages)
+- `WAITING_FOR_INPUT` — the agent finished a turn (`result` with `subtype: "success"`), awaiting user action
+- User calls `/reply` — resumes the SDK with a new `query()` using the same `agentSessionId`, transitions back to `RUNNING`
+- User calls `/complete` — tears down the node and transitions to `DONE`
+- User calls `/cancel` — aborts and transitions to `CANCELLED` (valid from `RUNNING` or `WAITING_FOR_INPUT`)
+
+The control plane doesn't know or care about PRs, reviews, tests, or any agent-internal states. It just manages session state and relays messages.
 
 ## Data Model
 
@@ -95,7 +102,14 @@ The control plane doesn't know or care about PRs, reviews, tests, or any agent-i
 interface Session {
   id: string;
   brief: string;
-  status: "queued" | "provisioning" | "running" | "paused" | "done" | "failed" | "cancelled";
+  status:
+    | "queued"
+    | "provisioning"
+    | "running"
+    | "waiting_for_input"
+    | "done"
+    | "failed"
+    | "cancelled";
   provider: string;
   nodeId?: string;
   agentSessionId?: string;
@@ -108,15 +122,17 @@ interface Session {
 
 REST for commands, SSE for streaming.
 
-| Method | Endpoint               | Description                                       |
-| ------ | ---------------------- | ------------------------------------------------- |
-| POST   | `/sessions`            | Create a new task session                         |
-| GET    | `/sessions`            | List all sessions                                 |
-| GET    | `/sessions/:id`        | Get session details                               |
-| POST   | `/sessions/:id/pause`  | Pause a session                                   |
-| POST   | `/sessions/:id/resume` | Resume a session                                  |
-| POST   | `/sessions/:id/cancel` | Cancel a session                                  |
-| GET    | `/sessions/:id/events` | SSE stream — agent messages, status changes, logs |
+| Method | Endpoint                 | Description                                    |
+| ------ | ------------------------ | ---------------------------------------------- |
+| POST   | `/sessions`              | Create a new task session                      |
+| GET    | `/sessions`              | List all sessions                              |
+| GET    | `/sessions/:id`          | Get session details                            |
+| POST   | `/sessions/:id/reply`    | Send a follow-up message (body: `{ message }`) |
+| POST   | `/sessions/:id/complete` | Mark session as done (user accepts the result) |
+| POST   | `/sessions/:id/cancel`   | Cancel a session                               |
+| GET    | `/sessions/:id/events`   | SSE stream — agent messages, status changes    |
+
+The SSE stream emits `agent_message` events containing raw SDK messages as the agent works. Clients use these for live progress (streaming text, tool calls, etc.). Status change events are emitted when the session transitions between states.
 
 ## Tech Stack
 
