@@ -37,6 +37,10 @@ export class Dispatcher {
       return;
     }
 
+    console.log(
+      `[dispatcher] dispatch started sessionId=${sessionId} provider=${session.provider}`,
+    );
+
     await this.manager.transition(sessionId, "provisioning");
 
     let handle: NodeHandle;
@@ -46,15 +50,22 @@ export class Dispatcher {
         sessionId,
         provider: session.provider,
       });
-    } catch {
+    } catch (err) {
+      console.error(`[dispatcher] provisioning failed sessionId=${sessionId}:`, err);
       await this.manager.transition(sessionId, "failed");
       return;
     }
+
+    console.log(
+      `[dispatcher] provisioning complete sessionId=${sessionId} nodeId=${handle.nodeId}`,
+    );
 
     await this.manager.transition(sessionId, "running");
     await this.manager.update(sessionId, { nodeId: handle.nodeId });
 
     const abortController = new AbortController();
+
+    console.log(`[dispatcher] query starting sessionId=${sessionId}`);
     const q = query({
       prompt: session.brief,
       options: {
@@ -71,6 +82,7 @@ export class Dispatcher {
   }
 
   async reply(sessionId: string, message: string): Promise<void> {
+    console.log(`[dispatcher] reply called sessionId=${sessionId}`);
     const entry = this.active.get(sessionId);
     if (!entry) {
       throw new Error(`No active session for ${sessionId}`);
@@ -103,6 +115,7 @@ export class Dispatcher {
   }
 
   async complete(sessionId: string): Promise<void> {
+    console.log(`[dispatcher] complete called sessionId=${sessionId}`);
     const entry = this.active.get(sessionId);
     if (entry) {
       if (entry.query) {
@@ -115,6 +128,7 @@ export class Dispatcher {
   }
 
   async cancel(sessionId: string): Promise<void> {
+    console.log(`[dispatcher] cancel called sessionId=${sessionId}`);
     const entry = this.active.get(sessionId);
     if (entry) {
       entry.abortController.abort();
@@ -141,11 +155,15 @@ export class Dispatcher {
 
           if (msg.type === "result") {
             if (msg.subtype === "success") {
+              console.log(`[dispatcher] query finished sessionId=${sessionId} result=success`);
               await this.manager.waitForInput(sessionId);
               if (entry) {
                 entry.query = null;
               }
             } else {
+              console.log(
+                `[dispatcher] query finished sessionId=${sessionId} result=${msg.subtype}`,
+              );
               await this.manager.transition(sessionId, "failed");
               const failEntry = this.active.get(sessionId);
               if (failEntry) {
@@ -156,7 +174,8 @@ export class Dispatcher {
             break;
           }
         }
-      } catch {
+      } catch (err) {
+        console.error(`[dispatcher] consumeMessages error sessionId=${sessionId}:`, err);
         try {
           await this.manager.transition(sessionId, "failed");
         } catch {

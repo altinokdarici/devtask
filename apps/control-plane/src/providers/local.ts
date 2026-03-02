@@ -4,8 +4,16 @@ import type { NodeProvider, NodeHandle, NodeConfig } from "./provider.ts";
 
 export function createLocalProvider(): NodeProvider {
   return {
-    async provision(_config: NodeConfig): Promise<NodeHandle> {
+    async provision(config: NodeConfig): Promise<NodeHandle> {
       const nodeId = crypto.randomUUID();
+
+      console.log(
+        `[local-provider] provisioning started sessionId=${config.sessionId} nodeId=${nodeId}`,
+      );
+
+      console.log(
+        `[local-provider] provisioning complete sessionId=${config.sessionId} nodeId=${nodeId}`,
+      );
 
       return {
         nodeId,
