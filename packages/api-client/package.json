@@ -1,0 +1,19 @@
+{
+  "name": "@devtask/api-client",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "node --test src/create-api-client.test.ts"
+  },
+  "dependencies": {
+    "@devtask/api-types": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^25.3.3"
+  }
+}

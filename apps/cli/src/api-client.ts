@@ -1,55 +1,28 @@
-import type { Session, CreateSessionBody, SseEventName } from "@devtask/api-types";
+import type { SseEventName } from "@devtask/api-types";
+import { createApiClient } from "@devtask/api-client";
 
 let baseUrl = "http://localhost:4000";
+let client = createApiClient(baseUrl);
 
 export function setBaseUrl(url: string): void {
   baseUrl = url;
+  client = createApiClient(url);
 }
 
 export function getBaseUrl(): string {
   return baseUrl;
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${baseUrl}${path}`, init);
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`HTTP ${res.status}: ${body}`);
-  }
-  return res.json() as Promise<T>;
-}
-
-export async function createSession(body: CreateSessionBody): Promise<Session> {
-  return request<Session>("/sessions", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-}
-
-export async function listSessions(): Promise<Session[]> {
-  return request<Session[]>("/sessions");
-}
-
-export async function getSession(id: string): Promise<Session> {
-  return request<Session>(`/sessions/${id}`);
-}
-
-export async function cancelSession(id: string): Promise<Session> {
-  return request<Session>(`/sessions/${id}/cancel`, { method: "POST" });
-}
-
-export async function replyToSession(id: string, message: string): Promise<Session> {
-  return request<Session>(`/sessions/${id}/reply`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message }),
-  });
-}
-
-export async function completeSession(id: string): Promise<Session> {
-  return request<Session>(`/sessions/${id}/complete`, { method: "POST" });
-}
+export const createSession: typeof client.createSession = (...args) =>
+  client.createSession(...args);
+export const listSessions: typeof client.listSessions = () => client.listSessions();
+export const getSession: typeof client.getSession = (...args) => client.getSession(...args);
+export const cancelSession: typeof client.cancelSession = (...args) =>
+  client.cancelSession(...args);
+export const replyToSession: typeof client.replyToSession = (...args) =>
+  client.replyToSession(...args);
+export const completeSession: typeof client.completeSession = (...args) =>
+  client.completeSession(...args);
 
 export async function streamEvents(
   id: string,
