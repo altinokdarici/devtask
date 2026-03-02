@@ -48,6 +48,11 @@ export function renderEvent(event: string, data: string): void {
 
     if (event === "updated") {
       console.log(`[updated] ${parsed.session.status}`);
+      if (parsed.session.status === "waiting_for_input") {
+        console.log(
+          `[info] Session is waiting for input. Use: devtask reply ${parsed.session.id} "<message>"`,
+        );
+      }
       return;
     }
 

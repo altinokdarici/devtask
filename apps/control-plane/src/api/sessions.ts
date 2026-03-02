@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import type { SessionManager } from "../session-manager.ts";
 import type { Dispatcher } from "../dispatcher.ts";
-import type { CreateSessionBody } from "@devtask/api-types";
+import type { CreateSessionBody, ReplyBody } from "@devtask/api-types";
 import { SessionNotFoundError } from "../session-not-found-error.ts";
 import { InvalidTransitionError } from "../invalid-transition-error.ts";
 
@@ -50,6 +50,42 @@ export function sessionRoutes(manager: SessionManager, dispatcher: Dispatcher): 
   app.post("/:id/resume", async (c) => {
     try {
       const session = await manager.resume(c.req.param("id"));
+      return c.json(session);
+    } catch (e) {
+      if (e instanceof SessionNotFoundError) {
+        return c.json({ error: e.message }, 404);
+      }
+      if (e instanceof InvalidTransitionError) {
+        return c.json({ error: e.message }, 409);
+      }
+      throw e;
+    }
+  });
+
+  app.post("/:id/reply", async (c) => {
+    try {
+      const body = (await c.req.json()) as ReplyBody;
+      if (!body.message || typeof body.message !== "string") {
+        return c.json({ error: "message is required" }, 400);
+      }
+      await dispatcher.reply(c.req.param("id"), body.message);
+      const session = manager.get(c.req.param("id"));
+      return c.json(session);
+    } catch (e) {
+      if (e instanceof SessionNotFoundError) {
+        return c.json({ error: e.message }, 404);
+      }
+      if (e instanceof InvalidTransitionError) {
+        return c.json({ error: e.message }, 409);
+      }
+      throw e;
+    }
+  });
+
+  app.post("/:id/complete", async (c) => {
+    try {
+      await dispatcher.complete(c.req.param("id"));
+      const session = manager.get(c.req.param("id"));
       return c.json(session);
     } catch (e) {
       if (e instanceof SessionNotFoundError) {

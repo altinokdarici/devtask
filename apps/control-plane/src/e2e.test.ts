@@ -21,8 +21,6 @@ function createMemoryStore(): SessionStore {
   };
 }
 
-// A mock provider + dispatcher combo that emits canned SDK messages
-// without requiring a real Claude process.
 function createMockSdkProvider(): NodeProvider {
   return {
     async provision() {
@@ -43,12 +41,20 @@ function createRegistry(provider: NodeProvider): ProviderRegistry {
   return registry;
 }
 
-class MockDispatcher extends Dispatcher {
-  private mockMessages: SDKMessage[];
+interface ActiveEntry {
+  handle: NodeHandle;
+  query: unknown;
+  abortController: AbortController;
+  agentSessionId: string | null;
+}
 
-  constructor(manager: SessionManager, provider: NodeProvider, messages: SDKMessage[]) {
+class MockDispatcher extends Dispatcher {
+  private turns: SDKMessage[][];
+  private turnIndex = 0;
+
+  constructor(manager: SessionManager, provider: NodeProvider, turns: SDKMessage[][]) {
     super(manager, createRegistry(provider));
-    this.mockMessages = messages;
+    this.turns = turns;
   }
 
   async dispatch(sessionId: string): Promise<void> {
@@ -74,7 +80,8 @@ class MockDispatcher extends Dispatcher {
     await manager.update(sessionId, { nodeId: handle.nodeId });
 
     const abortController = new AbortController();
-    const messages = this.mockMessages;
+    const messages = this.turns[this.turnIndex] ?? [];
+    this.turnIndex++;
 
     const mockQuery = (async function* () {
       for (const msg of messages) {
@@ -87,16 +94,74 @@ class MockDispatcher extends Dispatcher {
     })() as unknown as Query;
     mockQuery.close = () => abortController.abort();
 
-    const active = (this as unknown as { active: Map<string, unknown> }).active;
-    active.set(sessionId, { handle, query: mockQuery, abortController });
+    const active = (this as unknown as { active: Map<string, ActiveEntry> }).active;
+    active.set(sessionId, { handle, query: mockQuery, abortController, agentSessionId: null });
 
     const consumeMessages = (
       this as unknown as {
-        consumeMessages: (id: string, h: NodeHandle, q: unknown) => void;
+        consumeMessages: (id: string, q: unknown) => void;
       }
     ).consumeMessages.bind(this);
-    consumeMessages(sessionId, handle, mockQuery);
+    consumeMessages(sessionId, mockQuery);
   }
+
+  async reply(sessionId: string, _message: string): Promise<void> {
+    const manager = (this as unknown as { manager: SessionManager }).manager;
+    const active = (this as unknown as { active: Map<string, ActiveEntry> }).active;
+    const entry = active.get(sessionId);
+    if (!entry) {
+      throw new Error(`No active session for ${sessionId}`);
+    }
+
+    await manager.transition(sessionId, "running");
+
+    const abortController = new AbortController();
+    entry.abortController = abortController;
+    const messages = this.turns[this.turnIndex] ?? [];
+    this.turnIndex++;
+
+    const mockQuery = (async function* () {
+      for (const msg of messages) {
+        if (abortController.signal.aborted) {
+          return;
+        }
+        await new Promise((r) => setTimeout(r, 5));
+        yield msg;
+      }
+    })() as unknown as Query;
+    mockQuery.close = () => abortController.abort();
+
+    entry.query = mockQuery;
+
+    const consumeMessages = (
+      this as unknown as {
+        consumeMessages: (id: string, q: unknown) => void;
+      }
+    ).consumeMessages.bind(this);
+    consumeMessages(sessionId, mockQuery);
+  }
+}
+
+function waitForStatus(
+  manager: SessionManager,
+  id: string,
+  status: string,
+  timeoutMs = 5000,
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(
+      () => reject(new Error(`Timed out waiting for ${status}`)),
+      timeoutMs,
+    );
+    const check = () => {
+      if (manager.get(id).status === status) {
+        clearTimeout(timeout);
+        resolve();
+      }
+    };
+    check();
+    manager.subscribe(id, () => check());
+  });
 }
 
 describe("E2E integration", () => {
@@ -104,8 +169,13 @@ describe("E2E integration", () => {
   let baseUrl: string;
   let manager: SessionManager;
 
-  const mockMessages: SDKMessage[] = [
-    { type: "system", subtype: "init", model: "claude-sonnet-4-20250514" } as unknown as SDKMessage,
+  const turn1Messages: SDKMessage[] = [
+    {
+      type: "system",
+      subtype: "init",
+      session_id: "sdk-session-1",
+      model: "claude-sonnet-4-20250514",
+    } as unknown as SDKMessage,
     {
       type: "assistant",
       message: { content: [{ type: "text", text: "Working on: e2e test task" }] },
@@ -119,12 +189,34 @@ describe("E2E integration", () => {
     } as unknown as SDKMessage,
   ];
 
+  const turn2Messages: SDKMessage[] = [
+    {
+      type: "assistant",
+      message: { content: [{ type: "text", text: "Continuing after reply" }] },
+    } as unknown as SDKMessage,
+    {
+      type: "result",
+      subtype: "success",
+      is_error: false,
+      duration_ms: 50,
+      total_cost_usd: 0.005,
+    } as unknown as SDKMessage,
+  ];
+
   before(async () => {
     manager = new SessionManager(createMemoryStore());
     await manager.init();
 
     const provider = createMockSdkProvider();
-    const dispatcher = new MockDispatcher(manager, provider, mockMessages);
+    const validationTurnMessages: SDKMessage[] = [
+      { type: "system", subtype: "init", session_id: "sdk-session-2" } as unknown as SDKMessage,
+      { type: "result", subtype: "success", is_error: false } as unknown as SDKMessage,
+    ];
+    const dispatcher = new MockDispatcher(manager, provider, [
+      turn1Messages,
+      turn2Messages,
+      validationTurnMessages,
+    ]);
     dispatcher.start();
 
     const app = new Hono();
@@ -150,86 +242,34 @@ describe("E2E integration", () => {
     assert.equal(body.status, "ok");
   });
 
-  it("full session lifecycle: create → run → done", async () => {
+  it("full multi-turn lifecycle: create → run → waiting_for_input → reply → waiting_for_input → complete → done", async () => {
     const createRes = await fetch(`${baseUrl}/sessions`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ brief: "e2e test task" }),
+      body: JSON.stringify({ brief: "e2e multi-turn task" }),
     });
     assert.equal(createRes.status, 201);
     const session: Session = await createRes.json();
-    assert.equal(session.brief, "e2e test task");
     assert.ok(session.id);
 
-    // Stream SSE events until the session reaches "done"
-    const events: Array<{ event: string; data: string }> = [];
+    await waitForStatus(manager, session.id, "waiting_for_input");
+    assert.equal(manager.get(session.id).status, "waiting_for_input");
 
-    const eventsRes = await fetch(`${baseUrl}/sessions/${session.id}/events`);
-    assert.equal(eventsRes.status, 200);
+    const replyRes = await fetch(`${baseUrl}/sessions/${session.id}/reply`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: "continue with more detail" }),
+    });
+    assert.equal(replyRes.status, 200);
 
-    const reader = eventsRes.body!.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
+    await waitForStatus(manager, session.id, "waiting_for_input");
+    assert.equal(manager.get(session.id).status, "waiting_for_input");
 
-    const timeout = setTimeout(() => {
-      reader.cancel();
-    }, 10_000);
-
-    try {
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) {
-          break;
-        }
-
-        buffer += decoder.decode(value, { stream: true });
-
-        const lines = buffer.split("\n");
-        buffer = lines.pop()!;
-
-        let currentEvent = "";
-        let currentData = "";
-
-        for (const line of lines) {
-          if (line.startsWith("event:")) {
-            currentEvent = line.slice(6).trim();
-          } else if (line.startsWith("data:")) {
-            currentData = line.slice(5).trim();
-          } else if (line === "") {
-            if (currentEvent && currentData) {
-              events.push({ event: currentEvent, data: currentData });
-
-              if (currentEvent === "updated") {
-                const parsed = JSON.parse(currentData);
-                if (parsed.session?.status === "done" || parsed.session?.status === "failed") {
-                  reader.cancel();
-                  break;
-                }
-              }
-            }
-            currentEvent = "";
-            currentData = "";
-          }
-        }
-
-        const finalSession = manager.get(session.id);
-        if (finalSession.status === "done" || finalSession.status === "failed") {
-          reader.cancel();
-          break;
-        }
-      }
-    } finally {
-      clearTimeout(timeout);
-    }
-
-    const finalSession = manager.get(session.id);
-    assert.equal(finalSession.status, "done");
-
-    assert.ok(events.length > 0, "should have received SSE events");
-    assert.equal(events[0].event, "snapshot");
-
-    const agentMessages = events.filter((e) => e.event === "agent_message");
-    assert.ok(agentMessages.length > 0, "should have received agent messages");
+    const completeRes = await fetch(`${baseUrl}/sessions/${session.id}/complete`, {
+      method: "POST",
+    });
+    assert.equal(completeRes.status, 200);
+    assert.equal(manager.get(session.id).status, "done");
   });
 
   it("session list returns created sessions", async () => {
@@ -251,5 +291,23 @@ describe("E2E integration", () => {
   it("get nonexistent session returns 404", async () => {
     const res = await fetch(`${baseUrl}/sessions/nonexistent`);
     assert.equal(res.status, 404);
+  });
+
+  it("reply rejects missing message", async () => {
+    const createRes = await fetch(`${baseUrl}/sessions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ brief: "validation test" }),
+    });
+    const session: Session = await createRes.json();
+
+    await waitForStatus(manager, session.id, "waiting_for_input");
+
+    const res = await fetch(`${baseUrl}/sessions/${session.id}/reply`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    assert.equal(res.status, 400);
   });
 });
