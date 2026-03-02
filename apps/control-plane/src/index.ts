@@ -5,16 +5,20 @@ import { SessionManager } from "./session-manager.ts";
 import { createFileStore } from "./session-store.ts";
 import { Dispatcher } from "./dispatcher.ts";
 import { createLocalProvider } from "./providers/local.ts";
+import { createCodespaceProvider } from "./providers/codespace.ts";
 import { ProviderRegistry } from "./providers/registry.ts";
 import { createRouter } from "./api/router.ts";
 
 const config = loadConfig();
 
-const manager = new SessionManager(createFileStore());
+const manager = new SessionManager(createFileStore(), config.provider.default);
 await manager.init();
 
 const providers = new ProviderRegistry();
 providers.register("local", createLocalProvider());
+for (const [name, profile] of Object.entries(config.codespaceProfiles)) {
+  providers.register(`codespace:${name}`, createCodespaceProvider(profile));
+}
 
 const dispatcher = new Dispatcher(manager, providers);
 dispatcher.start();
