@@ -40,7 +40,7 @@ export function SessionDetail({
       <Card>
         <CardContent className="pt-6 space-y-4">
           <div className="flex items-center gap-3">
-            <h2 className="text-xl font-bold">{session.brief}</h2>
+            <h2 className="font-display text-xl font-bold">{session.brief}</h2>
             <SessionStatusBadge status={currentStatus} />
           </div>
           <div className="text-xs text-muted-foreground font-mono space-y-1">
@@ -58,7 +58,7 @@ export function SessionDetail({
             variant="outline"
             size="sm"
             onClick={handleComplete}
-            className="border-green-800 text-green-400 hover:bg-green-950 hover:text-green-300"
+            className="border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-green-800 dark:text-[#98c379] dark:hover:bg-green-950/50"
           >
             Complete
           </Button>
@@ -66,7 +66,7 @@ export function SessionDetail({
             variant="outline"
             size="sm"
             onClick={handleCancel}
-            className="border-red-800 text-red-400 hover:bg-red-950 hover:text-red-300"
+            className="border-red-300 text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-[#e06c75] dark:hover:bg-red-950/50"
           >
             Cancel
           </Button>
