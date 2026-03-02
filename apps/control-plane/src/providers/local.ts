@@ -2,7 +2,11 @@ import { spawn } from "node:child_process";
 import crypto from "node:crypto";
 import type { NodeProvider, NodeHandle, NodeConfig } from "./provider.ts";
 
-export function createLocalProvider(): NodeProvider {
+interface LocalProviderConfig {
+  workDir?: string;
+}
+
+export function createLocalProvider(localConfig?: LocalProviderConfig): NodeProvider {
   return {
     async provision(config: NodeConfig): Promise<NodeHandle> {
       const nodeId = crypto.randomUUID();
@@ -22,7 +26,7 @@ export function createLocalProvider(): NodeProvider {
           const env = { ...(options.env as NodeJS.ProcessEnv) };
           delete env.CLAUDECODE;
           return spawn(options.command, options.args, {
-            cwd: options.cwd,
+            cwd: localConfig?.workDir ?? options.cwd,
             env,
             signal: options.signal,
             stdio: ["pipe", "pipe", "pipe"],

@@ -30,11 +30,9 @@ export class SessionManager {
   private sessions = new Map<string, Session>();
   private listeners = new Map<string, Set<Listener>>();
   private store: SessionStore;
-  private defaultProvider: string;
 
-  constructor(store: SessionStore, defaultProvider = "local") {
+  constructor(store: SessionStore) {
     this.store = store;
-    this.defaultProvider = defaultProvider;
   }
 
   async init(): Promise<void> {
@@ -48,9 +46,10 @@ export class SessionManager {
     const now = new Date().toISOString();
     const session: Session = {
       id: crypto.randomUUID(),
+      projectId: body.projectId,
       brief: body.brief,
       status: "queued",
-      provider: body.provider ?? this.defaultProvider,
+      provider: body.projectId,
       createdAt: now,
       updatedAt: now,
     };

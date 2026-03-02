@@ -1,7 +1,8 @@
 import { query, type Query } from "@anthropic-ai/claude-agent-sdk";
 import type { SessionManager } from "./session-manager.ts";
+import type { ProjectManager } from "./project-manager.ts";
 import type { NodeHandle } from "./providers/provider.ts";
-import type { ProviderRegistry } from "./providers/registry.ts";
+import { createProviderFromProject } from "./providers/create-provider-from-project.ts";
 import { SYSTEM_PROMPT } from "./system-prompt.ts";
 
 interface ActiveSession {
@@ -14,11 +15,11 @@ interface ActiveSession {
 export class Dispatcher {
   private active = new Map<string, ActiveSession>();
   private manager: SessionManager;
-  private providers: ProviderRegistry;
+  private projectManager: ProjectManager;
 
-  constructor(manager: SessionManager, providers: ProviderRegistry) {
+  constructor(manager: SessionManager, projectManager: ProjectManager) {
     this.manager = manager;
-    this.providers = providers;
+    this.projectManager = projectManager;
   }
 
   start(): void {
@@ -38,17 +39,18 @@ export class Dispatcher {
     }
 
     console.log(
-      `[dispatcher] dispatch started sessionId=${sessionId} provider=${session.provider}`,
+      `[dispatcher] dispatch started sessionId=${sessionId} projectId=${session.projectId}`,
     );
 
     await this.manager.transition(sessionId, "provisioning");
 
     let handle: NodeHandle;
     try {
-      const provider = this.providers.get(session.provider);
+      const project = this.projectManager.get(session.projectId);
+      const provider = createProviderFromProject(project.provider);
       handle = await provider.provision({
         sessionId,
-        provider: session.provider,
+        provider: project.provider.type,
       });
     } catch (err) {
       console.error(`[dispatcher] provisioning failed sessionId=${sessionId}:`, err);

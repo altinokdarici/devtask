@@ -1,15 +1,26 @@
 import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import { SessionManager, type SessionEvent } from "./session-manager.ts";
+import { ProjectManager } from "./project-manager.ts";
 import { Dispatcher } from "./dispatcher.ts";
 import type { NodeProvider, NodeHandle } from "./providers/provider.ts";
-import { ProviderRegistry } from "./providers/registry.ts";
 import type { SDKMessage } from "@anthropic-ai/claude-agent-sdk";
 import type { SessionStore } from "./session-store.type.ts";
+import type { ProjectStore } from "./project-store.type.ts";
 
-function createMemoryStore(): SessionStore {
+function createMemorySessionStore(): SessionStore {
   return {
     async save() {},
+    async loadAll() {
+      return [];
+    },
+  };
+}
+
+function createMemoryProjectStore(): ProjectStore {
+  return {
+    async save() {},
+    async remove() {},
     async loadAll() {
       return [];
     },
@@ -39,22 +50,22 @@ function createMockProvider(_opts: MockProviderOptions): NodeProvider & { destro
   return result;
 }
 
-function createRegistry(provider: NodeProvider): ProviderRegistry {
-  const registry = new ProviderRegistry();
-  registry.register("local", provider);
-  return registry;
-}
-
 class TestableDispatcher extends Dispatcher {
   private turns: SDKMessage[][];
   private turnIndex = 0;
   private mockKeepAlive: boolean;
-  private mockAbortController: AbortController | null = null;
+  private mockProvider: NodeProvider;
 
-  constructor(manager: SessionManager, provider: NodeProvider, opts: MockProviderOptions) {
-    super(manager, createRegistry(provider));
+  constructor(
+    manager: SessionManager,
+    projectManager: ProjectManager,
+    provider: NodeProvider,
+    opts: MockProviderOptions,
+  ) {
+    super(manager, projectManager);
     this.turns = opts.turns;
     this.mockKeepAlive = opts.keepAlive ?? false;
+    this.mockProvider = provider;
   }
 
   async dispatch(sessionId: string): Promise<void> {
@@ -64,14 +75,12 @@ class TestableDispatcher extends Dispatcher {
     }
 
     const manager = (this as unknown as { manager: SessionManager }).manager;
-    const providers = (this as unknown as { providers: ProviderRegistry }).providers;
 
     await manager.transition(sessionId, "provisioning");
 
     let handle: NodeHandle;
     try {
-      const provider = providers.get(session.provider);
-      handle = await provider.provision({ sessionId, provider: session.provider });
+      handle = await this.mockProvider.provision({ sessionId, provider: "local" });
     } catch {
       await manager.transition(sessionId, "failed");
       return;
@@ -81,7 +90,6 @@ class TestableDispatcher extends Dispatcher {
     await manager.update(sessionId, { nodeId: handle.nodeId });
 
     const abortController = new AbortController();
-    this.mockAbortController = abortController;
     const messages = this.turns[this.turnIndex] ?? [];
     this.turnIndex++;
     const keepAlive = this.mockKeepAlive;
@@ -163,16 +171,25 @@ interface ActiveEntry {
 
 describe("Dispatcher", () => {
   let manager: SessionManager;
+  let projectManager: ProjectManager;
+  let projectId: string;
 
   beforeEach(async () => {
-    manager = new SessionManager(createMemoryStore());
+    manager = new SessionManager(createMemorySessionStore());
     await manager.init();
+    projectManager = new ProjectManager(createMemoryProjectStore());
+    await projectManager.init();
+    const project = await projectManager.create({
+      name: "test-project",
+      provider: { type: "local", workDir: "/tmp/test" },
+    });
+    projectId = project.id;
   });
 
-  it("dispatches a queued session through provisioning → running → waiting_for_input", async () => {
+  it("dispatches a queued session through provisioning -> running -> waiting_for_input", async () => {
     const mockProvider = createMockProvider({ turns: [] });
 
-    const dispatcher = new TestableDispatcher(manager, mockProvider, {
+    const dispatcher = new TestableDispatcher(manager, projectManager, mockProvider, {
       turns: [
         [
           { type: "system", subtype: "init", session_id: "sdk-session-1" } as unknown as SDKMessage,
@@ -192,7 +209,7 @@ describe("Dispatcher", () => {
     });
     dispatcher.start();
 
-    const session = await manager.create({ brief: "test task" });
+    const session = await manager.create({ brief: "test task", projectId });
 
     await new Promise((r) => setTimeout(r, 50));
 
@@ -205,7 +222,7 @@ describe("Dispatcher", () => {
   it("reply resumes and goes back to waiting_for_input", async () => {
     const mockProvider = createMockProvider({ turns: [] });
 
-    const dispatcher = new TestableDispatcher(manager, mockProvider, {
+    const dispatcher = new TestableDispatcher(manager, projectManager, mockProvider, {
       turns: [
         [
           { type: "system", subtype: "init", session_id: "sdk-session-1" } as unknown as SDKMessage,
@@ -222,7 +239,7 @@ describe("Dispatcher", () => {
     });
     dispatcher.start();
 
-    const session = await manager.create({ brief: "multi-turn" });
+    const session = await manager.create({ brief: "multi-turn", projectId });
     await new Promise((r) => setTimeout(r, 50));
     assert.equal(manager.get(session.id).status, "waiting_for_input");
 
@@ -234,7 +251,7 @@ describe("Dispatcher", () => {
   it("complete destroys handle and transitions to done", async () => {
     const mockProvider = createMockProvider({ turns: [] });
 
-    const dispatcher = new TestableDispatcher(manager, mockProvider, {
+    const dispatcher = new TestableDispatcher(manager, projectManager, mockProvider, {
       turns: [
         [
           { type: "system", subtype: "init", session_id: "sdk-session-1" } as unknown as SDKMessage,
@@ -244,7 +261,7 @@ describe("Dispatcher", () => {
     });
     dispatcher.start();
 
-    const session = await manager.create({ brief: "complete me" });
+    const session = await manager.create({ brief: "complete me", projectId });
     await new Promise((r) => setTimeout(r, 50));
     assert.equal(manager.get(session.id).status, "waiting_for_input");
 
@@ -256,7 +273,7 @@ describe("Dispatcher", () => {
   it("cancel from waiting_for_input works", async () => {
     const mockProvider = createMockProvider({ turns: [] });
 
-    const dispatcher = new TestableDispatcher(manager, mockProvider, {
+    const dispatcher = new TestableDispatcher(manager, projectManager, mockProvider, {
       turns: [
         [
           { type: "system", subtype: "init", session_id: "sdk-session-1" } as unknown as SDKMessage,
@@ -266,7 +283,7 @@ describe("Dispatcher", () => {
     });
     dispatcher.start();
 
-    const session = await manager.create({ brief: "cancel me" });
+    const session = await manager.create({ brief: "cancel me", projectId });
     await new Promise((r) => setTimeout(r, 50));
     assert.equal(manager.get(session.id).status, "waiting_for_input");
 
@@ -278,7 +295,7 @@ describe("Dispatcher", () => {
   it("transitions to failed when result has error subtype", async () => {
     const mockProvider = createMockProvider({ turns: [] });
 
-    const dispatcher = new TestableDispatcher(manager, mockProvider, {
+    const dispatcher = new TestableDispatcher(manager, projectManager, mockProvider, {
       turns: [
         [
           { type: "system", subtype: "init" } as SDKMessage,
@@ -293,7 +310,7 @@ describe("Dispatcher", () => {
     });
     dispatcher.start();
 
-    const session = await manager.create({ brief: "failing task" });
+    const session = await manager.create({ brief: "failing task", projectId });
 
     await new Promise((r) => setTimeout(r, 50));
 
@@ -318,10 +335,12 @@ describe("Dispatcher", () => {
       { type: "result", subtype: "success", is_error: false } as unknown as SDKMessage,
     ];
 
-    const dispatcher = new TestableDispatcher(manager, mockProvider, { turns: [messages] });
+    const dispatcher = new TestableDispatcher(manager, projectManager, mockProvider, {
+      turns: [messages],
+    });
     dispatcher.start();
 
-    const session = await manager.create({ brief: "test" });
+    const session = await manager.create({ brief: "test", projectId });
     const agentMessages: SDKMessage[] = [];
     manager.subscribe(session.id, (event) => {
       if (event.type === "agent_message") {
@@ -340,13 +359,13 @@ describe("Dispatcher", () => {
   it("cancel aborts the query and transitions to cancelled", async () => {
     const mockProvider = createMockProvider({ turns: [] });
 
-    const dispatcher = new TestableDispatcher(manager, mockProvider, {
+    const dispatcher = new TestableDispatcher(manager, projectManager, mockProvider, {
       turns: [[{ type: "system", subtype: "init" } as SDKMessage]],
       keepAlive: true,
     });
     dispatcher.start();
 
-    const session = await manager.create({ brief: "cancel me" });
+    const session = await manager.create({ brief: "cancel me", projectId });
 
     await new Promise((r) => setTimeout(r, 50));
 
@@ -364,12 +383,12 @@ describe("Dispatcher", () => {
       },
     };
 
-    const dispatcher = new TestableDispatcher(manager, failingProvider, {
+    const dispatcher = new TestableDispatcher(manager, projectManager, failingProvider, {
       turns: [],
     });
     dispatcher.start();
 
-    const session = await manager.create({ brief: "doomed" });
+    const session = await manager.create({ brief: "doomed", projectId });
 
     await new Promise((r) => setTimeout(r, 50));
 
@@ -380,8 +399,8 @@ describe("Dispatcher", () => {
     const events: SessionEvent[] = [];
     manager.subscribe("*", (e) => events.push(e));
 
-    await manager.create({ brief: "one" });
-    await manager.create({ brief: "two" });
+    await manager.create({ brief: "one", projectId });
+    await manager.create({ brief: "two", projectId });
 
     assert.equal(events.length, 2);
     assert.equal(events[0].type, "created");

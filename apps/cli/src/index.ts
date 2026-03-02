@@ -8,6 +8,7 @@ import { logsCommand } from "./commands/logs.ts";
 import { cancelCommand } from "./commands/cancel.ts";
 import { replyCommand } from "./commands/reply.ts";
 import { completeCommand } from "./commands/complete.ts";
+import { projectCommand } from "./commands/project/index.ts";
 
 const config = loadConfig();
 setBaseUrl(`http://localhost:${config.controlPlane.port}`);
@@ -26,6 +27,7 @@ const main = defineCommand({
     cancel: cancelCommand,
     reply: replyCommand,
     complete: completeCommand,
+    project: projectCommand,
   },
 });
 

@@ -7,6 +7,7 @@ export default defineConfig({
   server: {
     proxy: {
       "/sessions": "http://localhost:4000",
+      "/projects": "http://localhost:4000",
       "/health": "http://localhost:4000",
     },
   },
