@@ -6,7 +6,7 @@ DevTask lets engineers run multiple independent AI-assisted coding tasks in para
 
 Instead of working with one AI thread at a time, developers can create isolated task sessions that run concurrently in fresh environments. Each session has its own branch, its own discussion thread, and its own lifecycle.
 
----ThThL
+---
 
 ## The Problem
 
@@ -30,7 +30,7 @@ DevTask introduces structured, parallel AI sessions.
 
 Each task:
 
-- Runs in an isolated environment
+- Runs in an isolated environment (Codespace, local, or future providers)
 - Has a structured brief and plan
 - Follows a deterministic execution loop
 - Validates itself using tests or commands
@@ -40,33 +40,51 @@ Developers can:
 
 - Start multiple tasks in parallel
 - Switch between sessions instantly
-- Answer clarification questions in batches
+- Send follow-up messages when the agent needs guidance
 - Review summaries instead of raw logs
 - Merge results independently
 
-It’s not fire-and-forget automation. It’s organized, scalable AI collaboration.
+It's not fire-and-forget automation. It's organized, scalable AI collaboration.
 
 ---
 
 ## How It Works
 
 1. Create a task with a structured brief.
-2. DevTask provisions an isolated environment.
+2. DevTask provisions an isolated environment via a pluggable provider (Codespace by default, local for development).
 3. The AI generates a plan and executes it.
 4. The system runs validation commands and iterates until success or timeout.
-5. A pull request is created with a concise summary.
-6. Developers review and merge.
+5. When the agent needs input, the session pauses and waits for your reply.
+6. You reply with guidance, and the agent continues — or you mark it complete.
+7. A pull request is created with a concise summary.
+8. Developers review and merge.
 
-Sessions wait for input when blocked and continue after your reply. You stay in control, but you’re no longer stuck in a single AI thread.
+Sessions are interactive. The agent works autonomously but can ask for clarification. You stay in control without being stuck in a single thread.
 
 ---
 
-## Why It’s Different
+## CLI
+
+```
+devtask create "Add unit tests for the auth module"
+devtask list
+devtask show <id>
+devtask logs <id>
+devtask reply <id> "Use node:test, not jest"
+devtask complete <id>
+devtask cancel <id>
+```
+
+---
+
+## Why It's Different
 
 - Built for parallelism, not chat.
 - Designed for independent, production-ready tasks.
+- Multi-turn sessions: the agent works, asks when stuck, you reply in batches.
 - Structured execution reduces babysitting.
 - Clear lifecycle: brief → plan → execute → validate → PR.
+- Pluggable providers: Codespace today, Docker and VMs tomorrow.
 - Unified view of all active AI sessions.
 
 ---
