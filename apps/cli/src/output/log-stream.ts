@@ -1,5 +1,7 @@
 export function renderEvent(event: string, data: string): void {
-  if (event === "ping") return;
+  if (event === "ping") {
+    return;
+  }
 
   try {
     const parsed = JSON.parse(data);

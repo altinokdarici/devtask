@@ -1,7 +1,9 @@
 import type { Session } from "@devtask/api-types";
 
 export function formatSessionTable(sessions: Session[]): string {
-  if (sessions.length === 0) return "No sessions found.";
+  if (sessions.length === 0) {
+    return "No sessions found.";
+  }
 
   const header = "ID\tSTATUS\tPROVIDER\tBRIEF\tCREATED";
   const rows = sessions.map((s) => {

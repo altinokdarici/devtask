@@ -57,7 +57,9 @@ export async function streamEvents(
     const body = await res.text();
     throw new Error(`HTTP ${res.status}: ${body}`);
   }
-  if (!res.body) throw new Error("No response body");
+  if (!res.body) {
+    throw new Error("No response body");
+  }
 
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
@@ -66,7 +68,9 @@ export async function streamEvents(
   try {
     while (true) {
       const { done, value } = await reader.read();
-      if (done) break;
+      if (done) {
+        break;
+      }
 
       buffer += decoder.decode(value, { stream: true });
       const lines = buffer.split("\n");

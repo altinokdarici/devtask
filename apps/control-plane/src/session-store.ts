@@ -26,7 +26,9 @@ async function loadAll(): Promise<Session[]> {
   const files = await fs.readdir(SESSIONS_DIR);
   const sessions: Session[] = [];
   for (const file of files) {
-    if (!file.endsWith(".json")) continue;
+    if (!file.endsWith(".json")) {
+      continue;
+    }
     const data = await fs.readFile(path.join(SESSIONS_DIR, file), "utf-8");
     sessions.push(JSON.parse(data) as Session);
   }

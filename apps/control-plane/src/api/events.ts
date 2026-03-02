@@ -12,7 +12,9 @@ export function eventRoutes(manager: SessionManager): Hono {
     try {
       manager.get(id);
     } catch (e) {
-      if (e instanceof SessionNotFoundError) return c.json({ error: e.message }, 404);
+      if (e instanceof SessionNotFoundError) {
+        return c.json({ error: e.message }, 404);
+      }
       throw e;
     }
 
@@ -22,7 +24,9 @@ export function eventRoutes(manager: SessionManager): Hono {
 
       let closed = false;
       const unsubscribe = manager.subscribe(id, async (event) => {
-        if (closed) return;
+        if (closed) {
+          return;
+        }
         await stream.writeSSE({ event: event.type, data: JSON.stringify(event) });
       });
 
@@ -34,7 +38,9 @@ export function eventRoutes(manager: SessionManager): Hono {
       // Keep the stream alive until the client disconnects
       while (!closed) {
         await new Promise((resolve) => setTimeout(resolve, 30_000));
-        if (closed) break;
+        if (closed) {
+          break;
+        }
         await stream.writeSSE({ event: "ping", data: "" });
       }
     });

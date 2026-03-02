@@ -65,7 +65,9 @@ export class SessionManager {
 
   get(id: string): Session {
     const session = this.sessions.get(id);
-    if (!session) throw new SessionNotFoundError(id);
+    if (!session) {
+      throw new SessionNotFoundError(id);
+    }
     return session;
   }
 
@@ -84,8 +86,12 @@ export class SessionManager {
 
   async update(id: string, fields: { nodeId?: string; agentSessionId?: string }): Promise<Session> {
     const session = this.get(id);
-    if (fields.nodeId !== undefined) session.nodeId = fields.nodeId;
-    if (fields.agentSessionId !== undefined) session.agentSessionId = fields.agentSessionId;
+    if (fields.nodeId !== undefined) {
+      session.nodeId = fields.nodeId;
+    }
+    if (fields.agentSessionId !== undefined) {
+      session.agentSessionId = fields.agentSessionId;
+    }
     session.updatedAt = new Date().toISOString();
     await this.store.save(session);
     this.emit(id, { type: "updated", session });
@@ -113,7 +119,9 @@ export class SessionManager {
     set.add(listener);
     return () => {
       set!.delete(listener);
-      if (set!.size === 0) this.listeners.delete(id);
+      if (set!.size === 0) {
+        this.listeners.delete(id);
+      }
     };
   }
 
@@ -125,12 +133,16 @@ export class SessionManager {
   private emit(id: string, event: SessionEvent): void {
     const set = this.listeners.get(id);
     if (set) {
-      for (const fn of set) fn(event);
+      for (const fn of set) {
+        fn(event);
+      }
     }
     if (id !== "*") {
       const global = this.listeners.get("*");
       if (global) {
-        for (const fn of global) fn(event);
+        for (const fn of global) {
+          fn(event);
+        }
       }
     }
   }
