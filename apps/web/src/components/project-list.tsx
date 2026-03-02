@@ -11,11 +11,12 @@ export function ProjectList({
 }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      {projects.map((project) => (
+      {projects.map((project, i) => (
         <Card
           key={project.id}
           onClick={() => onSelect(project)}
-          className="cursor-pointer transition-colors hover:bg-muted/50"
+          className="cursor-pointer animate-fade-up transition-all hover:border-primary/40 hover:shadow-md hover:shadow-primary/5"
+          style={{ animationDelay: `${i * 75}ms` }}
         >
           <CardHeader className="pb-2">
             <div className="flex items-start justify-between gap-2">
