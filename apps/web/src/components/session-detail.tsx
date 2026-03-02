@@ -3,8 +3,7 @@ import { useSessionEvents } from "../hooks/use-session-events.ts";
 import { SessionStatusBadge } from "./session-status-badge.tsx";
 import { AgentMessageLog } from "./agent-message-log.tsx";
 import { ReplyForm } from "./reply-form.tsx";
-import { cancelSession } from "../api/cancel-session.ts";
-import { completeSession } from "../api/complete-session.ts";
+import { api } from "../api-client.ts";
 
 export function SessionDetail({
   session,
@@ -21,12 +20,12 @@ export function SessionDetail({
     currentStatus !== "done" && currentStatus !== "failed" && currentStatus !== "cancelled";
 
   async function handleCancel() {
-    await cancelSession(session.id);
+    await api.cancelSession(session.id);
     onRefresh();
   }
 
   async function handleComplete() {
-    await completeSession(session.id);
+    await api.completeSession(session.id);
     onRefresh();
   }
 

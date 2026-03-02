@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { replyToSession } from "../api/reply-to-session.ts";
+import { api } from "../api-client.ts";
 
 export function ReplyForm({ sessionId, onReplied }: { sessionId: string; onReplied: () => void }) {
   const [message, setMessage] = useState("");
@@ -12,7 +12,7 @@ export function ReplyForm({ sessionId, onReplied }: { sessionId: string; onRepli
     }
     setSubmitting(true);
     try {
-      await replyToSession(sessionId, { message: message.trim() });
+      await api.replyToSession(sessionId, message.trim());
       setMessage("");
       onReplied();
     } finally {

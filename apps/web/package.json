@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@devtask/api-client": "workspace:*",
     "@devtask/api-types": "workspace:*",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"

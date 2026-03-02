@@ -32,6 +32,9 @@ importers:
 
   apps/cli:
     dependencies:
+      '@devtask/api-client':
+        specifier: workspace:*
+        version: link:../../packages/api-client
       '@devtask/api-types':
         specifier: workspace:*
         version: link:../../packages/api-types
@@ -70,6 +73,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@devtask/api-client':
+        specifier: workspace:*
+        version: link:../../packages/api-client
       '@devtask/api-types':
         specifier: workspace:*
         version: link:../../packages/api-types
@@ -101,6 +107,16 @@ importers:
       vite:
         specifier: ^6.3.2
         version: 6.4.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.31.1)(yaml@2.8.2)
+
+  packages/api-client:
+    dependencies:
+      '@devtask/api-types':
+        specifier: workspace:*
+        version: link:../api-types
+    devDependencies:
+      '@types/node':
+        specifier: ^25.3.3
+        version: 25.3.3
 
   packages/api-types: {}
 

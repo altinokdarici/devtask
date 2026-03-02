@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Session } from "@devtask/api-types";
-import { fetchSessions } from "../api/fetch-sessions.ts";
+import { api } from "../api-client.ts";
 
 export function useSessions() {
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -10,7 +10,7 @@ export function useSessions() {
   const refetch = useCallback(async () => {
     try {
       setError(null);
-      const data = await fetchSessions();
+      const data = await api.listSessions();
       setSessions(data);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unknown error");
