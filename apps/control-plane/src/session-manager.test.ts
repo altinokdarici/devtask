@@ -25,33 +25,25 @@ describe("SessionManager", () => {
 
   describe("create", () => {
     it("creates a session in queued status", async () => {
-      const session = await manager.create({ brief: "test task" });
+      const session = await manager.create({ brief: "test task", projectId: "proj-1" });
       assert.equal(session.status, "queued");
       assert.equal(session.brief, "test task");
-      assert.equal(session.provider, "local");
+      assert.equal(session.projectId, "proj-1");
       assert.ok(session.id);
       assert.ok(session.createdAt);
       assert.ok(session.updatedAt);
     });
 
-    it("uses provided provider", async () => {
-      const session = await manager.create({
-        brief: "test",
-        provider: "docker",
-      });
-      assert.equal(session.provider, "docker");
-    });
-
     it("adds session to the list", async () => {
-      await manager.create({ brief: "one" });
-      await manager.create({ brief: "two" });
+      await manager.create({ brief: "one", projectId: "proj-1" });
+      await manager.create({ brief: "two", projectId: "proj-1" });
       assert.equal(manager.list().length, 2);
     });
   });
 
   describe("get", () => {
     it("returns a session by id", async () => {
-      const created = await manager.create({ brief: "test" });
+      const created = await manager.create({ brief: "test", projectId: "proj-1" });
       const fetched = manager.get(created.id);
       assert.equal(fetched.id, created.id);
     });
@@ -62,8 +54,8 @@ describe("SessionManager", () => {
   });
 
   describe("state transitions", () => {
-    it("queued \u2192 provisioning \u2192 running \u2192 done", async () => {
-      const s = await manager.create({ brief: "test" });
+    it("queued -> provisioning -> running -> done", async () => {
+      const s = await manager.create({ brief: "test", projectId: "proj-1" });
       await manager.transition(s.id, "provisioning");
       assert.equal(manager.get(s.id).status, "provisioning");
       await manager.transition(s.id, "running");
@@ -73,19 +65,19 @@ describe("SessionManager", () => {
     });
 
     it("cancel from any active status", async () => {
-      const s1 = await manager.create({ brief: "queued" });
+      const s1 = await manager.create({ brief: "queued", projectId: "proj-1" });
       await manager.cancel(s1.id);
       assert.equal(manager.get(s1.id).status, "cancelled");
 
-      const s2 = await manager.create({ brief: "running" });
+      const s2 = await manager.create({ brief: "running", projectId: "proj-1" });
       await manager.transition(s2.id, "provisioning");
       await manager.transition(s2.id, "running");
       await manager.cancel(s2.id);
       assert.equal(manager.get(s2.id).status, "cancelled");
     });
 
-    it("running \u2192 waiting_for_input \u2192 running \u2192 waiting_for_input \u2192 done (multi-turn)", async () => {
-      const s = await manager.create({ brief: "test" });
+    it("running -> waiting_for_input -> running -> waiting_for_input -> done (multi-turn)", async () => {
+      const s = await manager.create({ brief: "test", projectId: "proj-1" });
       await manager.transition(s.id, "provisioning");
       await manager.transition(s.id, "running");
       await manager.waitForInput(s.id);
@@ -98,8 +90,8 @@ describe("SessionManager", () => {
       assert.equal(manager.get(s.id).status, "done");
     });
 
-    it("waiting_for_input \u2192 cancelled", async () => {
-      const s = await manager.create({ brief: "test" });
+    it("waiting_for_input -> cancelled", async () => {
+      const s = await manager.create({ brief: "test", projectId: "proj-1" });
       await manager.transition(s.id, "provisioning");
       await manager.transition(s.id, "running");
       await manager.waitForInput(s.id);
@@ -108,7 +100,7 @@ describe("SessionManager", () => {
     });
 
     it("rejects invalid transitions from waiting_for_input", async () => {
-      const s = await manager.create({ brief: "test" });
+      const s = await manager.create({ brief: "test", projectId: "proj-1" });
       await manager.transition(s.id, "provisioning");
       await manager.transition(s.id, "running");
       await manager.waitForInput(s.id);
@@ -116,19 +108,19 @@ describe("SessionManager", () => {
     });
 
     it("rejects invalid transitions", async () => {
-      const s = await manager.create({ brief: "test" });
+      const s = await manager.create({ brief: "test", projectId: "proj-1" });
       await assert.rejects(() => manager.transition(s.id, "done"), InvalidTransitionError);
     });
 
     it("rejects transitions from terminal states", async () => {
-      const s = await manager.create({ brief: "test" });
+      const s = await manager.create({ brief: "test", projectId: "proj-1" });
       await manager.cancel(s.id);
       await assert.rejects(() => manager.transition(s.id, "running"), InvalidTransitionError);
       await assert.rejects(() => manager.cancel(s.id), InvalidTransitionError);
     });
 
     it("updates updatedAt on transition", async () => {
-      const s = await manager.create({ brief: "test" });
+      const s = await manager.create({ brief: "test", projectId: "proj-1" });
       const before = s.updatedAt;
       await new Promise((r) => setTimeout(r, 5));
       await manager.cancel(s.id);
@@ -139,19 +131,16 @@ describe("SessionManager", () => {
   describe("pub/sub", () => {
     it("fires created event on create", async () => {
       const events: SessionEvent[] = [];
-      // Subscribe before the session exists using a known pattern:
-      // create, then subscribe for further events
-      const session = await manager.create({ brief: "test" });
+      const session = await manager.create({ brief: "test", projectId: "proj-1" });
       manager.subscribe(session.id, (e) => events.push(e));
 
-      // Trigger an event
       await manager.cancel(session.id);
       assert.equal(events.length, 1);
       assert.equal(events[0].type, "updated");
     });
 
     it("delivers events to multiple listeners", async () => {
-      const s = await manager.create({ brief: "test" });
+      const s = await manager.create({ brief: "test", projectId: "proj-1" });
       const events1: SessionEvent[] = [];
       const events2: SessionEvent[] = [];
       manager.subscribe(s.id, (e) => events1.push(e));
@@ -163,7 +152,7 @@ describe("SessionManager", () => {
     });
 
     it("unsubscribe stops delivery", async () => {
-      const s = await manager.create({ brief: "test" });
+      const s = await manager.create({ brief: "test", projectId: "proj-1" });
       const events: SessionEvent[] = [];
       const unsub = manager.subscribe(s.id, (e) => events.push(e));
 
@@ -176,29 +165,13 @@ describe("SessionManager", () => {
     });
 
     it("does not leak listeners across sessions", async () => {
-      const s1 = await manager.create({ brief: "one" });
-      const s2 = await manager.create({ brief: "two" });
+      const s1 = await manager.create({ brief: "one", projectId: "proj-1" });
+      const s2 = await manager.create({ brief: "two", projectId: "proj-1" });
       const events: SessionEvent[] = [];
       manager.subscribe(s1.id, (e) => events.push(e));
 
       await manager.cancel(s2.id);
       assert.equal(events.length, 0);
-    });
-  });
-
-  describe("default provider", () => {
-    it("uses configured default provider", async () => {
-      const m = new SessionManager(createMemoryStore(), "codespace:frontend");
-      await m.init();
-      const session = await m.create({ brief: "test" });
-      assert.equal(session.provider, "codespace:frontend");
-    });
-
-    it("allows explicit provider to override default", async () => {
-      const m = new SessionManager(createMemoryStore(), "codespace:frontend");
-      await m.init();
-      const session = await m.create({ brief: "test", provider: "local" });
-      assert.equal(session.provider, "local");
     });
   });
 
@@ -215,7 +188,7 @@ describe("SessionManager", () => {
       };
       const m = new SessionManager(store);
       await m.init();
-      const session = await m.create({ brief: "test" });
+      const session = await m.create({ brief: "test", projectId: "proj-1" });
       const before = session.updatedAt;
 
       await new Promise((r) => setTimeout(r, 5));
@@ -230,7 +203,7 @@ describe("SessionManager", () => {
 
     it("sets agentSessionId and emits event", async () => {
       const events: SessionEvent[] = [];
-      const session = await manager.create({ brief: "test" });
+      const session = await manager.create({ brief: "test", projectId: "proj-1" });
       manager.subscribe(session.id, (e) => events.push(e));
 
       await manager.update(session.id, { agentSessionId: "agent-456" });
@@ -241,7 +214,7 @@ describe("SessionManager", () => {
     });
 
     it("updates only the provided fields", async () => {
-      const session = await manager.create({ brief: "test" });
+      const session = await manager.create({ brief: "test", projectId: "proj-1" });
       await manager.update(session.id, { nodeId: "n1" });
       await manager.update(session.id, { agentSessionId: "a1" });
 
@@ -255,9 +228,10 @@ describe("SessionManager", () => {
     it("loads persisted sessions on init", async () => {
       const persisted: Session = {
         id: "abc",
+        projectId: "proj-1",
         brief: "persisted",
         status: "running",
-        provider: "codespace",
+        provider: "proj-1",
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };

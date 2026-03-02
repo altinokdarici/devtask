@@ -1,11 +1,17 @@
 import { Hono } from "hono";
 import type { SessionManager } from "../session-manager.ts";
+import type { ProjectManager } from "../project-manager.ts";
 import type { Dispatcher } from "../dispatcher.ts";
 import type { CreateSessionBody, ReplyBody } from "@devtask/api-types";
 import { SessionNotFoundError } from "../session-not-found-error.ts";
+import { ProjectNotFoundError } from "../project-not-found-error.ts";
 import { InvalidTransitionError } from "../invalid-transition-error.ts";
 
-export function sessionRoutes(manager: SessionManager, dispatcher: Dispatcher): Hono {
+export function sessionRoutes(
+  manager: SessionManager,
+  dispatcher: Dispatcher,
+  projectManager?: ProjectManager,
+): Hono {
   const app = new Hono();
 
   app.post("/", async (c) => {
@@ -13,12 +19,27 @@ export function sessionRoutes(manager: SessionManager, dispatcher: Dispatcher): 
     if (!body.brief || typeof body.brief !== "string") {
       return c.json({ error: "brief is required" }, 400);
     }
+    if (!body.projectId || typeof body.projectId !== "string") {
+      return c.json({ error: "projectId is required" }, 400);
+    }
+    if (projectManager) {
+      try {
+        projectManager.get(body.projectId);
+      } catch (e) {
+        if (e instanceof ProjectNotFoundError) {
+          return c.json({ error: e.message }, 404);
+        }
+        throw e;
+      }
+    }
     const session = await manager.create(body);
     return c.json(session, 201);
   });
 
   app.get("/", (c) => {
-    return c.json(manager.list());
+    const projectId = c.req.query("projectId");
+    const sessions = manager.list();
+    return c.json(projectId ? sessions.filter((s) => s.projectId === projectId) : sessions);
   });
 
   app.get("/:id", (c) => {

@@ -15,7 +15,7 @@ export function getBaseUrl(): string {
 
 export const createSession: typeof client.createSession = (...args) =>
   client.createSession(...args);
-export const listSessions: typeof client.listSessions = () => client.listSessions();
+export const listSessions: typeof client.listSessions = (...args) => client.listSessions(...args);
 export const getSession: typeof client.getSession = (...args) => client.getSession(...args);
 export const cancelSession: typeof client.cancelSession = (...args) =>
   client.cancelSession(...args);
@@ -23,6 +23,13 @@ export const replyToSession: typeof client.replyToSession = (...args) =>
   client.replyToSession(...args);
 export const completeSession: typeof client.completeSession = (...args) =>
   client.completeSession(...args);
+
+export const createProject: typeof client.createProject = (...args) =>
+  client.createProject(...args);
+export const listProjects: typeof client.listProjects = () => client.listProjects();
+export const getProject: typeof client.getProject = (...args) => client.getProject(...args);
+export const deleteProject: typeof client.deleteProject = (...args) =>
+  client.deleteProject(...args);
 
 export async function streamEvents(
   id: string,

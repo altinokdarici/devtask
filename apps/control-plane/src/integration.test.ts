@@ -4,18 +4,28 @@ import { Hono } from "hono";
 import { serve } from "@hono/node-server";
 import type { ServerType } from "@hono/node-server";
 import { SessionManager } from "./session-manager.ts";
+import { ProjectManager } from "./project-manager.ts";
 import { Dispatcher } from "./dispatcher.ts";
-import { createLocalProvider } from "./providers/local.ts";
-import { ProviderRegistry } from "./providers/registry.ts";
 import { createRouter } from "./api/router.ts";
 import type { Session } from "@devtask/api-types";
 import type { SessionStore } from "./session-store.type.ts";
+import type { ProjectStore } from "./project-store.type.ts";
 
 const SKIP = !process.env["ANTHROPIC_API_KEY"];
 
-function createMemoryStore(): SessionStore {
+function createMemorySessionStore(): SessionStore {
   return {
     async save() {},
+    async loadAll() {
+      return [];
+    },
+  };
+}
+
+function createMemoryProjectStore(): ProjectStore {
+  return {
+    async save() {},
+    async remove() {},
     async loadAll() {
       return [];
     },
@@ -25,21 +35,27 @@ function createMemoryStore(): SessionStore {
 describe("SDK integration (requires ANTHROPIC_API_KEY)", { skip: SKIP }, () => {
   let server: ServerType;
   let baseUrl: string;
-  let manager: SessionManager;
+  let projectId: string;
 
   before(async () => {
-    manager = new SessionManager(createMemoryStore());
-    await manager.init();
+    const sessionManager = new SessionManager(createMemorySessionStore());
+    await sessionManager.init();
 
-    const providers = new ProviderRegistry();
-    providers.register("local", createLocalProvider());
+    const projectManager = new ProjectManager(createMemoryProjectStore());
+    await projectManager.init();
 
-    const dispatcher = new Dispatcher(manager, providers);
+    const project = await projectManager.create({
+      name: "integration-project",
+      provider: { type: "local", workDir: process.cwd() },
+    });
+    projectId = project.id;
+
+    const dispatcher = new Dispatcher(sessionManager, projectManager);
     dispatcher.start();
 
     const app = new Hono();
     app.get("/health", (c) => c.json({ status: "ok" }));
-    app.route("/", createRouter(manager, dispatcher));
+    app.route("/", createRouter(sessionManager, projectManager, dispatcher));
 
     await new Promise<void>((resolve) => {
       server = serve({ fetch: app.fetch, port: 0 }, (info) => {
@@ -59,7 +75,7 @@ describe("SDK integration (requires ANTHROPIC_API_KEY)", { skip: SKIP }, () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         brief: 'Reply with exactly the text "hello world" and nothing else.',
-        provider: "local",
+        projectId,
       }),
     });
     assert.equal(createRes.status, 201);

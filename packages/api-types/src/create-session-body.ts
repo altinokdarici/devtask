@@ -1,4 +1,4 @@
 export interface CreateSessionBody {
   brief: string;
-  provider?: string;
+  projectId: string;
 }

@@ -7,3 +7,10 @@ export type { CreatedSseEvent } from "./created-sse-event.ts";
 export type { UpdatedSseEvent } from "./updated-sse-event.ts";
 export type { AgentMessageSseEvent } from "./agent-message-sse-event.ts";
 export type { SessionSseEvent } from "./session-sse-event.ts";
+export type {
+  LocalProjectProvider,
+  CodespaceProjectProvider,
+  ProjectProvider,
+} from "./project-provider.type.ts";
+export type { Project } from "./project.ts";
+export type { CreateProjectBody } from "./create-project-body.ts";

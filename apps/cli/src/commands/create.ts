@@ -9,15 +9,16 @@ export const createCommand = defineCommand({
       description: "Task brief for the agent",
       required: true,
     },
-    provider: {
+    project: {
       type: "string",
-      description: "Provider to use",
+      description: "Project ID",
+      required: true,
     },
   },
   async run({ args }) {
     const session = await createSession({
       brief: args.brief,
-      provider: args.provider,
+      projectId: args.project,
     });
     console.log(`Created session ${session.id} (${session.status})`);
   },

@@ -2,6 +2,7 @@ import type { SessionStatus } from "./session-status.ts";
 
 export interface Session {
   id: string;
+  projectId: string;
   brief: string;
   status: SessionStatus;
   provider: string;

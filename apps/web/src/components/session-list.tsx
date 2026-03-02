@@ -19,7 +19,6 @@ export function SessionList({
           <th className="py-2 pr-4">ID</th>
           <th className="py-2 pr-4">Brief</th>
           <th className="py-2 pr-4">Status</th>
-          <th className="py-2 pr-4">Provider</th>
           <th className="py-2">Created</th>
         </tr>
       </thead>
@@ -35,7 +34,6 @@ export function SessionList({
             <td className="py-2 pr-4">
               <SessionStatusBadge status={session.status} />
             </td>
-            <td className="py-2 pr-4 text-gray-400">{session.provider}</td>
             <td className="py-2 text-gray-400">{new Date(session.createdAt).toLocaleString()}</td>
           </tr>
         ))}

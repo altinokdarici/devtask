@@ -4,17 +4,28 @@ import { Hono } from "hono";
 import { serve } from "@hono/node-server";
 import type { ServerType } from "@hono/node-server";
 import { SessionManager } from "./session-manager.ts";
+import { ProjectManager } from "./project-manager.ts";
 import { Dispatcher } from "./dispatcher.ts";
 import { createRouter } from "./api/router.ts";
 import type { Session } from "@devtask/api-types";
 import type { SessionStore } from "./session-store.type.ts";
+import type { ProjectStore } from "./project-store.type.ts";
 import type { NodeProvider, NodeHandle } from "./providers/provider.ts";
-import { ProviderRegistry } from "./providers/registry.ts";
 import type { SDKMessage, Query } from "@anthropic-ai/claude-agent-sdk";
 
-function createMemoryStore(): SessionStore {
+function createMemorySessionStore(): SessionStore {
   return {
     async save() {},
+    async loadAll() {
+      return [];
+    },
+  };
+}
+
+function createMemoryProjectStore(): ProjectStore {
+  return {
+    async save() {},
+    async remove() {},
     async loadAll() {
       return [];
     },
@@ -35,12 +46,6 @@ function createMockSdkProvider(): NodeProvider {
   };
 }
 
-function createRegistry(provider: NodeProvider): ProviderRegistry {
-  const registry = new ProviderRegistry();
-  registry.register("local", provider);
-  return registry;
-}
-
 interface ActiveEntry {
   handle: NodeHandle;
   query: unknown;
@@ -51,15 +56,21 @@ interface ActiveEntry {
 class MockDispatcher extends Dispatcher {
   private turns: SDKMessage[][];
   private turnIndex = 0;
+  private mockProvider: NodeProvider;
 
-  constructor(manager: SessionManager, provider: NodeProvider, turns: SDKMessage[][]) {
-    super(manager, createRegistry(provider));
+  constructor(
+    manager: SessionManager,
+    projectManager: ProjectManager,
+    provider: NodeProvider,
+    turns: SDKMessage[][],
+  ) {
+    super(manager, projectManager);
     this.turns = turns;
+    this.mockProvider = provider;
   }
 
   async dispatch(sessionId: string): Promise<void> {
     const manager = (this as unknown as { manager: SessionManager }).manager;
-    const providers = (this as unknown as { providers: ProviderRegistry }).providers;
     const session = manager.get(sessionId);
     if (session.status !== "queued") {
       return;
@@ -69,8 +80,7 @@ class MockDispatcher extends Dispatcher {
 
     let handle: NodeHandle;
     try {
-      const provider = providers.get(session.provider);
-      handle = await provider.provision({ sessionId, provider: session.provider });
+      handle = await this.mockProvider.provision({ sessionId, provider: "local" });
     } catch {
       await manager.transition(sessionId, "failed");
       return;
@@ -168,6 +178,7 @@ describe("E2E integration", () => {
   let server: ServerType;
   let baseUrl: string;
   let manager: SessionManager;
+  let projectId: string;
 
   const turn1Messages: SDKMessage[] = [
     {
@@ -204,15 +215,24 @@ describe("E2E integration", () => {
   ];
 
   before(async () => {
-    manager = new SessionManager(createMemoryStore());
+    manager = new SessionManager(createMemorySessionStore());
     await manager.init();
+
+    const projectManager = new ProjectManager(createMemoryProjectStore());
+    await projectManager.init();
+
+    const project = await projectManager.create({
+      name: "e2e-project",
+      provider: { type: "local", workDir: "/tmp/e2e" },
+    });
+    projectId = project.id;
 
     const provider = createMockSdkProvider();
     const validationTurnMessages: SDKMessage[] = [
       { type: "system", subtype: "init", session_id: "sdk-session-2" } as unknown as SDKMessage,
       { type: "result", subtype: "success", is_error: false } as unknown as SDKMessage,
     ];
-    const dispatcher = new MockDispatcher(manager, provider, [
+    const dispatcher = new MockDispatcher(manager, projectManager, provider, [
       turn1Messages,
       turn2Messages,
       validationTurnMessages,
@@ -221,7 +241,7 @@ describe("E2E integration", () => {
 
     const app = new Hono();
     app.get("/health", (c) => c.json({ status: "ok" }));
-    app.route("/", createRouter(manager, dispatcher));
+    app.route("/", createRouter(manager, projectManager, dispatcher));
 
     await new Promise<void>((resolve) => {
       server = serve({ fetch: app.fetch, port: 0 }, (info) => {
@@ -242,11 +262,11 @@ describe("E2E integration", () => {
     assert.equal(body.status, "ok");
   });
 
-  it("full multi-turn lifecycle: create → run → waiting_for_input → reply → waiting_for_input → complete → done", async () => {
+  it("full multi-turn lifecycle: create -> run -> waiting_for_input -> reply -> waiting_for_input -> complete -> done", async () => {
     const createRes = await fetch(`${baseUrl}/sessions`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ brief: "e2e multi-turn task" }),
+      body: JSON.stringify({ brief: "e2e multi-turn task", projectId }),
     });
     assert.equal(createRes.status, 201);
     const session: Session = await createRes.json();
@@ -283,7 +303,7 @@ describe("E2E integration", () => {
     const res = await fetch(`${baseUrl}/sessions`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({}),
+      body: JSON.stringify({ projectId }),
     });
     assert.equal(res.status, 400);
   });
@@ -297,7 +317,7 @@ describe("E2E integration", () => {
     const createRes = await fetch(`${baseUrl}/sessions`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ brief: "validation test" }),
+      body: JSON.stringify({ brief: "validation test", projectId }),
     });
     const session: Session = await createRes.json();
 

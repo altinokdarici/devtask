@@ -1,7 +1,13 @@
 import { useState } from "react";
 import { api } from "../api-client.ts";
 
-export function CreateSessionForm({ onCreated }: { onCreated: () => void }) {
+export function CreateSessionForm({
+  projectId,
+  onCreated,
+}: {
+  projectId: string;
+  onCreated: () => void;
+}) {
   const [brief, setBrief] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -12,7 +18,7 @@ export function CreateSessionForm({ onCreated }: { onCreated: () => void }) {
     }
     setSubmitting(true);
     try {
-      await api.createSession({ brief: brief.trim() });
+      await api.createSession({ brief: brief.trim(), projectId });
       setBrief("");
       onCreated();
     } finally {

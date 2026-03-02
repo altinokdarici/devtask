@@ -1,4 +1,4 @@
-import type { CreateSessionBody, Session } from "@devtask/api-types";
+import type { CreateSessionBody, CreateProjectBody, Session, Project } from "@devtask/api-types";
 
 export function createApiClient(baseUrl: string) {
   async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -19,8 +19,9 @@ export function createApiClient(baseUrl: string) {
       });
     },
 
-    listSessions(): Promise<Session[]> {
-      return request<Session[]>("/sessions");
+    listSessions(projectId?: string): Promise<Session[]> {
+      const qs = projectId ? `?projectId=${encodeURIComponent(projectId)}` : "";
+      return request<Session[]>(`/sessions${qs}`);
     },
 
     getSession(id: string): Promise<Session> {
@@ -41,6 +42,26 @@ export function createApiClient(baseUrl: string) {
 
     completeSession(id: string): Promise<Session> {
       return request<Session>(`/sessions/${id}/complete`, { method: "POST" });
+    },
+
+    createProject(body: CreateProjectBody): Promise<Project> {
+      return request<Project>("/projects", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+    },
+
+    listProjects(): Promise<Project[]> {
+      return request<Project[]>("/projects");
+    },
+
+    getProject(id: string): Promise<Project> {
+      return request<Project>(`/projects/${id}`);
+    },
+
+    deleteProject(id: string): Promise<void> {
+      return request<void>(`/projects/${id}`, { method: "DELETE" });
     },
   };
 }

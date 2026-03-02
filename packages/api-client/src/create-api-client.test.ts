@@ -1,15 +1,24 @@
 import { describe, it, afterEach, mock } from "node:test";
 import assert from "node:assert/strict";
-import type { Session } from "@devtask/api-types";
+import type { Session, Project } from "@devtask/api-types";
 import { createApiClient } from "./create-api-client.ts";
 
 const TEST_BASE_URL = "http://localhost:9999";
 
 const fakeSession: Session = {
   id: "sess-1",
+  projectId: "proj-1",
   brief: "test task",
   status: "queued",
   provider: "local",
+  createdAt: "2026-03-02T00:00:00Z",
+  updatedAt: "2026-03-02T00:00:00Z",
+};
+
+const fakeProject: Project = {
+  id: "proj-1",
+  name: "my-project",
+  provider: { type: "local", workDir: "/tmp/work" },
   createdAt: "2026-03-02T00:00:00Z",
   updatedAt: "2026-03-02T00:00:00Z",
 };
@@ -44,7 +53,7 @@ describe("createApiClient", () => {
       const mockFetch = mock.fn<FetchFn>(async () => jsonResponse(fakeSession));
       globalThis.fetch = mockFetch;
 
-      const result = await api.createSession({ brief: "test task", provider: "local" });
+      const result = await api.createSession({ brief: "test task", projectId: "proj-1" });
 
       assert.equal(mockFetch.mock.callCount(), 1);
       const [url, init] = mockFetch.mock.calls[0].arguments;
@@ -54,26 +63,16 @@ describe("createApiClient", () => {
       assert.equal(headers?.["Content-Type"], "application/json");
       assert.deepEqual(JSON.parse(init?.body as string), {
         brief: "test task",
-        provider: "local",
+        projectId: "proj-1",
       });
       assert.deepEqual(result, fakeSession);
-    });
-
-    it("sends POST without provider when omitted", async () => {
-      const mockFetch = mock.fn<FetchFn>(async () => jsonResponse(fakeSession));
-      globalThis.fetch = mockFetch;
-
-      await api.createSession({ brief: "no provider" });
-
-      const [, init] = mockFetch.mock.calls[0].arguments;
-      assert.deepEqual(JSON.parse(init?.body as string), { brief: "no provider" });
     });
 
     it("throws on non-ok response", async () => {
       const mockFetch = mock.fn<FetchFn>(async () => textResponse("bad request", 400));
       globalThis.fetch = mockFetch;
 
-      await assert.rejects(() => api.createSession({ brief: "fail" }), {
+      await assert.rejects(() => api.createSession({ brief: "fail", projectId: "proj-1" }), {
         message: "HTTP 400: bad request",
       });
     });
@@ -161,6 +160,75 @@ describe("createApiClient", () => {
       assert.equal(url, `${TEST_BASE_URL}/sessions/sess-1/complete`);
       assert.equal(init?.method, "POST");
       assert.equal(result.status, "done");
+    });
+  });
+
+  describe("createProject", () => {
+    it("sends POST /projects with JSON body", async () => {
+      const mockFetch = mock.fn<FetchFn>(async () => jsonResponse(fakeProject));
+      globalThis.fetch = mockFetch;
+
+      const result = await api.createProject({
+        name: "my-project",
+        provider: { type: "local", workDir: "/tmp/work" },
+      });
+
+      assert.equal(mockFetch.mock.callCount(), 1);
+      const [url, init] = mockFetch.mock.calls[0].arguments;
+      assert.equal(url, `${TEST_BASE_URL}/projects`);
+      assert.equal(init?.method, "POST");
+      const headers = init?.headers as Record<string, string>;
+      assert.equal(headers?.["Content-Type"], "application/json");
+      assert.deepEqual(result, fakeProject);
+    });
+  });
+
+  describe("listProjects", () => {
+    it("sends GET /projects", async () => {
+      const projects = [fakeProject];
+      const mockFetch = mock.fn<FetchFn>(async () => jsonResponse(projects));
+      globalThis.fetch = mockFetch;
+
+      const result = await api.listProjects();
+
+      const [url] = mockFetch.mock.calls[0].arguments;
+      assert.equal(url, `${TEST_BASE_URL}/projects`);
+      assert.deepEqual(result, projects);
+    });
+  });
+
+  describe("getProject", () => {
+    it("sends GET /projects/:id", async () => {
+      const mockFetch = mock.fn<FetchFn>(async () => jsonResponse(fakeProject));
+      globalThis.fetch = mockFetch;
+
+      const result = await api.getProject("proj-1");
+
+      const [url] = mockFetch.mock.calls[0].arguments;
+      assert.equal(url, `${TEST_BASE_URL}/projects/proj-1`);
+      assert.deepEqual(result, fakeProject);
+    });
+
+    it("throws on 404", async () => {
+      const mockFetch = mock.fn<FetchFn>(async () => textResponse("not found", 404));
+      globalThis.fetch = mockFetch;
+
+      await assert.rejects(() => api.getProject("missing"), {
+        message: "HTTP 404: not found",
+      });
+    });
+  });
+
+  describe("deleteProject", () => {
+    it("sends DELETE /projects/:id", async () => {
+      const mockFetch = mock.fn<FetchFn>(async () => jsonResponse(null));
+      globalThis.fetch = mockFetch;
+
+      await api.deleteProject("proj-1");
+
+      const [url, init] = mockFetch.mock.calls[0].arguments;
+      assert.equal(url, `${TEST_BASE_URL}/projects/proj-1`);
+      assert.equal(init?.method, "DELETE");
     });
   });
 });
