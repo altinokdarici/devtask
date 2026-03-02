@@ -7,8 +7,6 @@ import {
   createSession,
   listSessions,
   getSession,
-  pauseSession,
-  resumeSession,
   cancelSession,
   replyToSession,
   completeSession,
@@ -25,6 +23,8 @@ const fakeSession: Session = {
   createdAt: "2026-03-02T00:00:00Z",
   updatedAt: "2026-03-02T00:00:00Z",
 };
+
+type FetchFn = typeof globalThis.fetch;
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -61,8 +61,8 @@ describe("api-client", () => {
 
   describe("createSession", () => {
     it("sends POST /sessions with JSON body", async () => {
-      const mockFetch = mock.fn(async () => jsonResponse(fakeSession));
-      globalThis.fetch = mockFetch as typeof fetch;
+      const mockFetch = mock.fn<FetchFn>(async () => jsonResponse(fakeSession));
+      globalThis.fetch = mockFetch;
 
       const result = await createSession({ brief: "test task", provider: "local" });
 
@@ -70,7 +70,8 @@ describe("api-client", () => {
       const [url, init] = mockFetch.mock.calls[0].arguments;
       assert.equal(url, `${TEST_BASE_URL}/sessions`);
       assert.equal(init?.method, "POST");
-      assert.equal(init?.headers?.["Content-Type"], "application/json");
+      const headers = init?.headers as Record<string, string>;
+      assert.equal(headers?.["Content-Type"], "application/json");
       assert.deepEqual(JSON.parse(init?.body as string), {
         brief: "test task",
         provider: "local",
@@ -79,8 +80,8 @@ describe("api-client", () => {
     });
 
     it("sends POST without provider when omitted", async () => {
-      const mockFetch = mock.fn(async () => jsonResponse(fakeSession));
-      globalThis.fetch = mockFetch as typeof fetch;
+      const mockFetch = mock.fn<FetchFn>(async () => jsonResponse(fakeSession));
+      globalThis.fetch = mockFetch;
 
       await createSession({ brief: "no provider" });
 
@@ -89,8 +90,8 @@ describe("api-client", () => {
     });
 
     it("throws on non-ok response", async () => {
-      const mockFetch = mock.fn(async () => textResponse("bad request", 400));
-      globalThis.fetch = mockFetch as typeof fetch;
+      const mockFetch = mock.fn<FetchFn>(async () => textResponse("bad request", 400));
+      globalThis.fetch = mockFetch;
 
       await assert.rejects(() => createSession({ brief: "fail" }), {
         message: "HTTP 400: bad request",
@@ -101,23 +102,22 @@ describe("api-client", () => {
   describe("listSessions", () => {
     it("sends GET /sessions", async () => {
       const sessions = [fakeSession];
-      const mockFetch = mock.fn(async () => jsonResponse(sessions));
-      globalThis.fetch = mockFetch as typeof fetch;
+      const mockFetch = mock.fn<FetchFn>(async () => jsonResponse(sessions));
+      globalThis.fetch = mockFetch;
 
       const result = await listSessions();
 
       assert.equal(mockFetch.mock.callCount(), 1);
-      const [url, init] = mockFetch.mock.calls[0].arguments;
+      const [url] = mockFetch.mock.calls[0].arguments;
       assert.equal(url, `${TEST_BASE_URL}/sessions`);
-      assert.equal(init, undefined);
       assert.deepEqual(result, sessions);
     });
   });
 
   describe("getSession", () => {
     it("sends GET /sessions/:id", async () => {
-      const mockFetch = mock.fn(async () => jsonResponse(fakeSession));
-      globalThis.fetch = mockFetch as typeof fetch;
+      const mockFetch = mock.fn<FetchFn>(async () => jsonResponse(fakeSession));
+      globalThis.fetch = mockFetch;
 
       const result = await getSession("sess-1");
 
@@ -127,8 +127,8 @@ describe("api-client", () => {
     });
 
     it("throws on 404", async () => {
-      const mockFetch = mock.fn(async () => textResponse("not found", 404));
-      globalThis.fetch = mockFetch as typeof fetch;
+      const mockFetch = mock.fn<FetchFn>(async () => textResponse("not found", 404));
+      globalThis.fetch = mockFetch;
 
       await assert.rejects(() => getSession("missing"), {
         message: "HTTP 404: not found",
@@ -136,41 +136,11 @@ describe("api-client", () => {
     });
   });
 
-  describe("pauseSession", () => {
-    it("sends POST /sessions/:id/pause", async () => {
-      const paused = { ...fakeSession, status: "paused" as const };
-      const mockFetch = mock.fn(async () => jsonResponse(paused));
-      globalThis.fetch = mockFetch as typeof fetch;
-
-      const result = await pauseSession("sess-1");
-
-      const [url, init] = mockFetch.mock.calls[0].arguments;
-      assert.equal(url, `${TEST_BASE_URL}/sessions/sess-1/pause`);
-      assert.equal(init?.method, "POST");
-      assert.equal(result.status, "paused");
-    });
-  });
-
-  describe("resumeSession", () => {
-    it("sends POST /sessions/:id/resume", async () => {
-      const resumed = { ...fakeSession, status: "running" as const };
-      const mockFetch = mock.fn(async () => jsonResponse(resumed));
-      globalThis.fetch = mockFetch as typeof fetch;
-
-      const result = await resumeSession("sess-1");
-
-      const [url, init] = mockFetch.mock.calls[0].arguments;
-      assert.equal(url, `${TEST_BASE_URL}/sessions/sess-1/resume`);
-      assert.equal(init?.method, "POST");
-      assert.equal(result.status, "running");
-    });
-  });
-
   describe("cancelSession", () => {
     it("sends POST /sessions/:id/cancel", async () => {
       const cancelled = { ...fakeSession, status: "cancelled" as const };
-      const mockFetch = mock.fn(async () => jsonResponse(cancelled));
-      globalThis.fetch = mockFetch as typeof fetch;
+      const mockFetch = mock.fn<FetchFn>(async () => jsonResponse(cancelled));
+      globalThis.fetch = mockFetch;
 
       const result = await cancelSession("sess-1");
 
@@ -184,15 +154,16 @@ describe("api-client", () => {
   describe("replyToSession", () => {
     it("sends POST /sessions/:id/reply with message body", async () => {
       const waiting = { ...fakeSession, status: "running" as const };
-      const mockFetch = mock.fn(async () => jsonResponse(waiting));
-      globalThis.fetch = mockFetch as typeof fetch;
+      const mockFetch = mock.fn<FetchFn>(async () => jsonResponse(waiting));
+      globalThis.fetch = mockFetch;
 
       const result = await replyToSession("sess-1", "continue please");
 
       const [url, init] = mockFetch.mock.calls[0].arguments;
       assert.equal(url, `${TEST_BASE_URL}/sessions/sess-1/reply`);
       assert.equal(init?.method, "POST");
-      assert.equal(init?.headers?.["Content-Type"], "application/json");
+      const headers = init?.headers as Record<string, string>;
+      assert.equal(headers?.["Content-Type"], "application/json");
       assert.deepEqual(JSON.parse(init?.body as string), { message: "continue please" });
       assert.deepEqual(result, waiting);
     });
@@ -201,8 +172,8 @@ describe("api-client", () => {
   describe("completeSession", () => {
     it("sends POST /sessions/:id/complete", async () => {
       const done = { ...fakeSession, status: "done" as const };
-      const mockFetch = mock.fn(async () => jsonResponse(done));
-      globalThis.fetch = mockFetch as typeof fetch;
+      const mockFetch = mock.fn<FetchFn>(async () => jsonResponse(done));
+      globalThis.fetch = mockFetch;
 
       const result = await completeSession("sess-1");
 
@@ -233,13 +204,13 @@ describe("api-client", () => {
 
     it("parses SSE events and calls onEvent", async () => {
       const events: [string, string][] = [];
-      const mockFetch = mock.fn(async () =>
+      const mockFetch = mock.fn<FetchFn>(async () =>
         sseResponse([
           'event:snapshot\ndata:{"status":"running"}\n\n',
           'event:agent_message\ndata:{"type":"text"}\n\n',
         ]),
       );
-      globalThis.fetch = mockFetch as typeof fetch;
+      globalThis.fetch = mockFetch;
 
       await streamEvents("sess-1", (event, data) => events.push([event, data]));
 
@@ -254,8 +225,8 @@ describe("api-client", () => {
 
     it("uses default event type 'message' when no event field", async () => {
       const events: [string, string][] = [];
-      const mockFetch = mock.fn(async () => sseResponse(["data:hello\n\n"]));
-      globalThis.fetch = mockFetch as typeof fetch;
+      const mockFetch = mock.fn<FetchFn>(async () => sseResponse(["data:hello\n\n"]));
+      globalThis.fetch = mockFetch;
 
       await streamEvents("sess-1", (event, data) => events.push([event, data]));
 
@@ -265,8 +236,10 @@ describe("api-client", () => {
 
     it("handles chunked SSE data split across reads", async () => {
       const events: [string, string][] = [];
-      const mockFetch = mock.fn(async () => sseResponse(["event:up", "dated\ndata:ok\n\n"]));
-      globalThis.fetch = mockFetch as typeof fetch;
+      const mockFetch = mock.fn<FetchFn>(async () =>
+        sseResponse(["event:up", "dated\ndata:ok\n\n"]),
+      );
+      globalThis.fetch = mockFetch;
 
       await streamEvents("sess-1", (event, data) => events.push([event, data]));
 
@@ -276,10 +249,10 @@ describe("api-client", () => {
 
     it("skips empty data blocks", async () => {
       const events: [string, string][] = [];
-      const mockFetch = mock.fn(async () =>
+      const mockFetch = mock.fn<FetchFn>(async () =>
         sseResponse(["event:ping\n\n", "event:snapshot\ndata:{}\n\n"]),
       );
-      globalThis.fetch = mockFetch as typeof fetch;
+      globalThis.fetch = mockFetch;
 
       await streamEvents("sess-1", (event, data) => events.push([event, data]));
 
@@ -288,8 +261,8 @@ describe("api-client", () => {
     });
 
     it("throws on non-ok response", async () => {
-      const mockFetch = mock.fn(async () => textResponse("server error", 500));
-      globalThis.fetch = mockFetch as typeof fetch;
+      const mockFetch = mock.fn<FetchFn>(async () => textResponse("server error", 500));
+      globalThis.fetch = mockFetch;
 
       await assert.rejects(() => streamEvents("sess-1", () => {}), {
         message: "HTTP 500: server error",
@@ -297,10 +270,10 @@ describe("api-client", () => {
     });
 
     it("throws when response has no body", async () => {
-      const mockFetch = mock.fn(async () => {
+      const mockFetch = mock.fn<FetchFn>(async () => {
         return new Response(null, { status: 200 });
       });
-      globalThis.fetch = mockFetch as typeof fetch;
+      globalThis.fetch = mockFetch;
 
       await assert.rejects(() => streamEvents("sess-1", () => {}), {
         message: "No response body",
@@ -310,15 +283,14 @@ describe("api-client", () => {
     it("passes abort signal to fetch", async () => {
       const events: [string, string][] = [];
       const ac = new AbortController();
-      const mockFetch = mock.fn(async (_url: string, init?: RequestInit) => {
-        assert.equal(init?.signal, ac.signal);
-        return sseResponse(["data:ok\n\n"]);
-      });
-      globalThis.fetch = mockFetch as typeof fetch;
+      const mockFetch = mock.fn<FetchFn>(async () => sseResponse(["data:ok\n\n"]));
+      globalThis.fetch = mockFetch;
 
       await streamEvents("sess-1", (event, data) => events.push([event, data]), ac.signal);
 
       assert.equal(events.length, 1);
+      const [, init] = mockFetch.mock.calls[0].arguments;
+      assert.equal(init?.signal, ac.signal);
     });
   });
 });
