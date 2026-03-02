@@ -24,7 +24,9 @@ export function sessionRoutes(manager: SessionManager, dispatcher: Dispatcher): 
     try {
       return c.json(manager.get(c.req.param("id")));
     } catch (e) {
-      if (e instanceof SessionNotFoundError) return c.json({ error: e.message }, 404);
+      if (e instanceof SessionNotFoundError) {
+        return c.json({ error: e.message }, 404);
+      }
       throw e;
     }
   });
@@ -34,8 +36,12 @@ export function sessionRoutes(manager: SessionManager, dispatcher: Dispatcher): 
       const session = await manager.pause(c.req.param("id"));
       return c.json(session);
     } catch (e) {
-      if (e instanceof SessionNotFoundError) return c.json({ error: e.message }, 404);
-      if (e instanceof InvalidTransitionError) return c.json({ error: e.message }, 409);
+      if (e instanceof SessionNotFoundError) {
+        return c.json({ error: e.message }, 404);
+      }
+      if (e instanceof InvalidTransitionError) {
+        return c.json({ error: e.message }, 409);
+      }
       throw e;
     }
   });
@@ -45,8 +51,12 @@ export function sessionRoutes(manager: SessionManager, dispatcher: Dispatcher): 
       const session = await manager.resume(c.req.param("id"));
       return c.json(session);
     } catch (e) {
-      if (e instanceof SessionNotFoundError) return c.json({ error: e.message }, 404);
-      if (e instanceof InvalidTransitionError) return c.json({ error: e.message }, 409);
+      if (e instanceof SessionNotFoundError) {
+        return c.json({ error: e.message }, 404);
+      }
+      if (e instanceof InvalidTransitionError) {
+        return c.json({ error: e.message }, 409);
+      }
       throw e;
     }
   });
@@ -57,8 +67,12 @@ export function sessionRoutes(manager: SessionManager, dispatcher: Dispatcher): 
       const session = manager.get(c.req.param("id"));
       return c.json(session);
     } catch (e) {
-      if (e instanceof SessionNotFoundError) return c.json({ error: e.message }, 404);
-      if (e instanceof InvalidTransitionError) return c.json({ error: e.message }, 409);
+      if (e instanceof SessionNotFoundError) {
+        return c.json({ error: e.message }, 404);
+      }
+      if (e instanceof InvalidTransitionError) {
+        return c.json({ error: e.message }, 409);
+      }
       throw e;
     }
   });

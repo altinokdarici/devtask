@@ -31,7 +31,9 @@ export class Dispatcher {
 
   async dispatch(sessionId: string): Promise<void> {
     const session = this.manager.get(sessionId);
-    if (session.status !== "queued") return;
+    if (session.status !== "queued") {
+      return;
+    }
 
     await this.manager.transition(sessionId, "provisioning");
 

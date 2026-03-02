@@ -55,7 +55,9 @@ class MockDispatcher extends Dispatcher {
     const manager = (this as unknown as { manager: SessionManager }).manager;
     const providers = (this as unknown as { providers: ProviderRegistry }).providers;
     const session = manager.get(sessionId);
-    if (session.status !== "queued") return;
+    if (session.status !== "queued") {
+      return;
+    }
 
     await manager.transition(sessionId, "provisioning");
 
@@ -76,7 +78,9 @@ class MockDispatcher extends Dispatcher {
 
     const mockQuery = (async function* () {
       for (const msg of messages) {
-        if (abortController.signal.aborted) return;
+        if (abortController.signal.aborted) {
+          return;
+        }
         await new Promise((r) => setTimeout(r, 5));
         yield msg;
       }
@@ -174,7 +178,9 @@ describe("E2E integration", () => {
     try {
       while (true) {
         const { value, done } = await reader.read();
-        if (done) break;
+        if (done) {
+          break;
+        }
 
         buffer += decoder.decode(value, { stream: true });
 

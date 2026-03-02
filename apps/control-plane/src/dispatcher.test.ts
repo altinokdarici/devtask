@@ -62,7 +62,9 @@ class TestableDispatcher extends Dispatcher {
   // Override dispatch to use our mock query instead of the real SDK
   async dispatch(sessionId: string): Promise<void> {
     const session = (this as unknown as { manager: SessionManager }).manager.get(sessionId);
-    if (session.status !== "queued") return;
+    if (session.status !== "queued") {
+      return;
+    }
 
     const manager = (this as unknown as { manager: SessionManager }).manager;
     const providers = (this as unknown as { providers: ProviderRegistry }).providers;
@@ -89,7 +91,9 @@ class TestableDispatcher extends Dispatcher {
     // Create a mock async generator that yields our canned messages
     const mockQuery = (async function* () {
       for (const msg of messages) {
-        if (abortController.signal.aborted) return;
+        if (abortController.signal.aborted) {
+          return;
+        }
         await new Promise((r) => setTimeout(r, 1));
         yield msg;
       }
