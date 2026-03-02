@@ -153,7 +153,7 @@ export class Dispatcher {
             await this.manager.update(sessionId, { agentSessionId: msg.session_id as string });
           }
 
-          this.manager.emitAgentMessage(sessionId, msg);
+          await this.manager.emitAgentMessage(sessionId, msg);
 
           if (msg.type === "result") {
             if (msg.subtype === "success") {

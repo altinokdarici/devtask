@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { SessionManager, type SessionEvent } from "./session-manager.ts";
 import type { Session } from "@devtask/api-types";
 import type { SessionStore } from "./session-store.type.ts";
+import type { MessageStore } from "./message-store.type.ts";
 import { SessionNotFoundError } from "./session-not-found-error.ts";
 import { InvalidTransitionError } from "./invalid-transition-error.ts";
 
@@ -15,11 +16,28 @@ function createMemoryStore(): SessionStore {
   };
 }
 
+function createMemoryMessageStore(): MessageStore {
+  const messages = new Map<string, unknown[]>();
+  return {
+    async append(sessionId: string, message: unknown) {
+      let list = messages.get(sessionId);
+      if (!list) {
+        list = [];
+        messages.set(sessionId, list);
+      }
+      list.push(message);
+    },
+    async loadAll(sessionId: string) {
+      return messages.get(sessionId) ?? [];
+    },
+  };
+}
+
 describe("SessionManager", () => {
   let manager: SessionManager;
 
   beforeEach(async () => {
-    manager = new SessionManager(createMemoryStore());
+    manager = new SessionManager(createMemoryStore(), createMemoryMessageStore());
     await manager.init();
   });
 
@@ -186,7 +204,7 @@ describe("SessionManager", () => {
           return [];
         },
       };
-      const m = new SessionManager(store);
+      const m = new SessionManager(store, createMemoryMessageStore());
       await m.init();
       const session = await m.create({ brief: "test", projectId: "proj-1" });
       const before = session.updatedAt;
@@ -241,7 +259,7 @@ describe("SessionManager", () => {
           return [persisted];
         },
       };
-      const m = new SessionManager(store);
+      const m = new SessionManager(store, createMemoryMessageStore());
       await m.init();
       assert.equal(m.get("abc").brief, "persisted");
       assert.equal(m.list().length, 1);

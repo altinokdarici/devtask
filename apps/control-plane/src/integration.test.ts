@@ -9,6 +9,7 @@ import { Dispatcher } from "./dispatcher.ts";
 import { createRouter } from "./api/router.ts";
 import type { Session } from "@devtask/api-types";
 import type { SessionStore } from "./session-store.type.ts";
+import type { MessageStore } from "./message-store.type.ts";
 import type { ProjectStore } from "./project-store.type.ts";
 
 const SKIP = !process.env["ANTHROPIC_API_KEY"];
@@ -18,6 +19,23 @@ function createMemorySessionStore(): SessionStore {
     async save() {},
     async loadAll() {
       return [];
+    },
+  };
+}
+
+function createMemoryMessageStore(): MessageStore {
+  const messages = new Map<string, unknown[]>();
+  return {
+    async append(sessionId: string, message: unknown) {
+      let list = messages.get(sessionId);
+      if (!list) {
+        list = [];
+        messages.set(sessionId, list);
+      }
+      list.push(message);
+    },
+    async loadAll(sessionId: string) {
+      return messages.get(sessionId) ?? [];
     },
   };
 }
@@ -38,7 +56,10 @@ describe("SDK integration (requires ANTHROPIC_API_KEY)", { skip: SKIP }, () => {
   let projectId: string;
 
   before(async () => {
-    const sessionManager = new SessionManager(createMemorySessionStore());
+    const sessionManager = new SessionManager(
+      createMemorySessionStore(),
+      createMemoryMessageStore(),
+    );
     await sessionManager.init();
 
     const projectManager = new ProjectManager(createMemoryProjectStore());
