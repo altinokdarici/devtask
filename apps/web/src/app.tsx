@@ -1,7 +1,10 @@
-import { Outlet } from "@tanstack/react-router";
+import { Outlet, useMatches } from "@tanstack/react-router";
 import { ThemeToggle } from "./components/theme-toggle.tsx";
 
 export function App() {
+  const matches = useMatches();
+  const isSessionDetail = matches.some((m) => m.routeId.includes("sessions/$sessionId"));
+
   return (
     <div className="min-h-screen flex flex-col">
       <header className="sticky top-0 z-50 border-b bg-card/80 backdrop-blur-sm">
@@ -16,9 +19,15 @@ export function App() {
         </div>
       </header>
 
-      <main className="flex-1 mx-auto w-full max-w-7xl px-6 py-6">
-        <Outlet />
-      </main>
+      {isSessionDetail ? (
+        <main className="flex-1 min-h-0">
+          <Outlet />
+        </main>
+      ) : (
+        <main className="flex-1 mx-auto w-full max-w-7xl px-6 py-6">
+          <Outlet />
+        </main>
+      )}
     </div>
   );
 }
