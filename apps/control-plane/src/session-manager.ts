@@ -7,6 +7,7 @@ import type {
   UpdatedSseEvent,
 } from "@devtask/api-types";
 import type { SessionStore } from "./session-store.type.ts";
+import type { MessageStore } from "./message-store.type.ts";
 import { SessionNotFoundError } from "./session-not-found-error.ts";
 import { InvalidTransitionError } from "./invalid-transition-error.ts";
 import type { SDKMessage } from "@anthropic-ai/claude-agent-sdk";
@@ -30,9 +31,11 @@ export class SessionManager {
   private sessions = new Map<string, Session>();
   private listeners = new Map<string, Set<Listener>>();
   private store: SessionStore;
+  private messageStore: MessageStore;
 
-  constructor(store: SessionStore) {
+  constructor(store: SessionStore, messageStore: MessageStore) {
     this.store = store;
+    this.messageStore = messageStore;
   }
 
   async init(): Promise<void> {
@@ -125,9 +128,15 @@ export class SessionManager {
     };
   }
 
-  emitAgentMessage(sessionId: string, message: SDKMessage): void {
+  async emitAgentMessage(sessionId: string, message: SDKMessage): Promise<void> {
     this.get(sessionId); // verify session exists
+    await this.messageStore.append(sessionId, message);
     this.emit(sessionId, { type: "agent_message", sessionId, message });
+  }
+
+  async getMessages(sessionId: string): Promise<unknown[]> {
+    this.get(sessionId); // verify session exists
+    return this.messageStore.loadAll(sessionId);
   }
 
   private emit(id: string, event: SessionEvent): void {

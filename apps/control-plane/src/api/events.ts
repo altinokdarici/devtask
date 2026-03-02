@@ -26,6 +26,14 @@ export function eventRoutes(manager: SessionManager): Hono {
         data: JSON.stringify(session),
       });
 
+      const messages = await manager.getMessages(id);
+      for (const msg of messages) {
+        await stream.writeSSE({
+          event: "agent_message" satisfies SseEventName,
+          data: JSON.stringify({ type: "agent_message", sessionId: id, message: msg }),
+        });
+      }
+
       let closed = false;
       const unsubscribe = manager.subscribe(id, async (event) => {
         if (closed) {

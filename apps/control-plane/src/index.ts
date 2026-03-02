@@ -3,6 +3,7 @@ import { serve } from "@hono/node-server";
 import { loadConfig } from "@devtask/config";
 import { SessionManager } from "./session-manager.ts";
 import { createFileStore } from "./session-store.ts";
+import { createFileMessageStore } from "./message-store.ts";
 import { ProjectManager } from "./project-manager.ts";
 import { createProjectFileStore } from "./project-store.ts";
 import { Dispatcher } from "./dispatcher.ts";
@@ -10,7 +11,7 @@ import { createRouter } from "./api/router.ts";
 
 const config = loadConfig();
 
-const sessionManager = new SessionManager(createFileStore());
+const sessionManager = new SessionManager(createFileStore(), createFileMessageStore());
 await sessionManager.init();
 
 const projectManager = new ProjectManager(createProjectFileStore());

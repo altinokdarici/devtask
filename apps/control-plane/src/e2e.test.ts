@@ -9,6 +9,7 @@ import { Dispatcher } from "./dispatcher.ts";
 import { createRouter } from "./api/router.ts";
 import type { Session } from "@devtask/api-types";
 import type { SessionStore } from "./session-store.type.ts";
+import type { MessageStore } from "./message-store.type.ts";
 import type { ProjectStore } from "./project-store.type.ts";
 import type { NodeProvider, NodeHandle } from "./providers/provider.ts";
 import type { SDKMessage, Query } from "@anthropic-ai/claude-agent-sdk";
@@ -18,6 +19,23 @@ function createMemorySessionStore(): SessionStore {
     async save() {},
     async loadAll() {
       return [];
+    },
+  };
+}
+
+function createMemoryMessageStore(): MessageStore {
+  const messages = new Map<string, unknown[]>();
+  return {
+    async append(sessionId: string, message: unknown) {
+      let list = messages.get(sessionId);
+      if (!list) {
+        list = [];
+        messages.set(sessionId, list);
+      }
+      list.push(message);
+    },
+    async loadAll(sessionId: string) {
+      return messages.get(sessionId) ?? [];
     },
   };
 }
@@ -215,7 +233,7 @@ describe("E2E integration", () => {
   ];
 
   before(async () => {
-    manager = new SessionManager(createMemorySessionStore());
+    manager = new SessionManager(createMemorySessionStore(), createMemoryMessageStore());
     await manager.init();
 
     const projectManager = new ProjectManager(createMemoryProjectStore());
@@ -232,10 +250,19 @@ describe("E2E integration", () => {
       { type: "system", subtype: "init", session_id: "sdk-session-2" } as unknown as SDKMessage,
       { type: "result", subtype: "success", is_error: false } as unknown as SDKMessage,
     ];
+    const reconnectTurnMessages: SDKMessage[] = [
+      { type: "system", subtype: "init", session_id: "sdk-session-3" } as unknown as SDKMessage,
+      {
+        type: "assistant",
+        message: { content: [{ type: "text", text: "reconnect test" }] },
+      } as unknown as SDKMessage,
+      { type: "result", subtype: "success", is_error: false } as unknown as SDKMessage,
+    ];
     const dispatcher = new MockDispatcher(manager, projectManager, provider, [
       turn1Messages,
       turn2Messages,
       validationTurnMessages,
+      reconnectTurnMessages,
     ]);
     dispatcher.start();
 
@@ -329,5 +356,55 @@ describe("E2E integration", () => {
       body: JSON.stringify({}),
     });
     assert.equal(res.status, 400);
+  });
+
+  it("SSE replays stored messages on reconnect", async () => {
+    const createRes = await fetch(`${baseUrl}/api/sessions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ brief: "sse reconnect test", projectId }),
+    });
+    assert.equal(createRes.status, 201);
+    const session: Session = await createRes.json();
+
+    await waitForStatus(manager, session.id, "waiting_for_input");
+
+    const stored = await manager.getMessages(session.id);
+    assert.ok(stored.length > 0, "messages should be persisted after turn completes");
+
+    const controller = new AbortController();
+    const res = await fetch(`${baseUrl}/api/sessions/${session.id}/events`, {
+      signal: controller.signal,
+    });
+    assert.equal(res.status, 200);
+
+    const reader = res.body!.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    const events: string[] = [];
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) {
+        break;
+      }
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop()!;
+      for (const line of lines) {
+        if (line.startsWith("event: ")) {
+          events.push(line.slice("event: ".length));
+        }
+      }
+      if (events.filter((e) => e === "agent_message").length >= stored.length) {
+        break;
+      }
+    }
+
+    controller.abort();
+
+    assert.equal(events[0], "snapshot");
+    const replayedCount = events.filter((e) => e === "agent_message").length;
+    assert.equal(replayedCount, stored.length, "all stored messages should be replayed");
   });
 });
