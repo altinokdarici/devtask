@@ -2,6 +2,7 @@ import { query, type Query } from "@anthropic-ai/claude-agent-sdk";
 import type { SessionManager } from "./session-manager.ts";
 import type { NodeHandle } from "./providers/provider.ts";
 import type { ProviderRegistry } from "./providers/registry.ts";
+import { SYSTEM_PROMPT } from "./system-prompt.ts";
 
 interface ActiveSession {
   handle: NodeHandle;
@@ -60,6 +61,7 @@ export class Dispatcher {
         spawnClaudeCodeProcess: handle.spawnFn,
         abortController,
         permissionMode: "bypassPermissions",
+        systemPrompt: { type: "preset", preset: "claude_code", append: SYSTEM_PROMPT },
       },
     });
 
@@ -92,6 +94,7 @@ export class Dispatcher {
         spawnClaudeCodeProcess: entry.handle.spawnFn,
         abortController,
         permissionMode: "bypassPermissions",
+        systemPrompt: { type: "preset", preset: "claude_code", append: SYSTEM_PROMPT },
       },
     });
 
