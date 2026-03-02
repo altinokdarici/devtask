@@ -19,9 +19,11 @@ export function createLocalProvider(): NodeProvider {
         nodeId,
 
         spawnFn(options) {
+          const env = { ...(options.env as NodeJS.ProcessEnv) };
+          delete env.CLAUDECODE;
           return spawn(options.command, options.args, {
             cwd: options.cwd,
-            env: options.env as NodeJS.ProcessEnv,
+            env,
             signal: options.signal,
             stdio: ["pipe", "pipe", "pipe"],
           });
