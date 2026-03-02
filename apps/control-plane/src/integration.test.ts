@@ -8,7 +8,8 @@ import { Dispatcher } from "./dispatcher.ts";
 import { createLocalProvider } from "./providers/local.ts";
 import { ProviderRegistry } from "./providers/registry.ts";
 import { createRouter } from "./api/router.ts";
-import type { Session, SessionStore } from "./types.ts";
+import type { Session } from "@devtask/api-types";
+import type { SessionStore } from "./session-store.type.ts";
 
 const SKIP = !process.env["ANTHROPIC_API_KEY"];
 

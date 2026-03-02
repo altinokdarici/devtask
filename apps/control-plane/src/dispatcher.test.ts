@@ -5,7 +5,7 @@ import { Dispatcher } from "./dispatcher.ts";
 import type { NodeProvider, NodeHandle } from "./providers/provider.ts";
 import { ProviderRegistry } from "./providers/registry.ts";
 import type { SDKMessage } from "@anthropic-ai/claude-agent-sdk";
-import type { SessionStore } from "./types.ts";
+import type { SessionStore } from "./session-store.type.ts";
 
 function createMemoryStore(): SessionStore {
   return {

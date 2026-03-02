@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
 import type { SessionManager } from "../session-manager.ts";
-import { SessionNotFoundError } from "../types.ts";
+import { SessionNotFoundError } from "../session-not-found-error.ts";
 
 export function eventRoutes(manager: SessionManager): Hono {
   const app = new Hono();
