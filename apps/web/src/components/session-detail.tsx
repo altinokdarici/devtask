@@ -4,6 +4,8 @@ import { SessionStatusBadge } from "./session-status-badge.tsx";
 import { AgentMessageLog } from "./agent-message-log.tsx";
 import { ReplyForm } from "./reply-form.tsx";
 import { api } from "../api-client.ts";
+import { Button } from "./ui/button.tsx";
+import { Card, CardContent } from "./ui/card.tsx";
 
 export function SessionDetail({
   session,
@@ -31,49 +33,55 @@ export function SessionDetail({
 
   return (
     <div className="space-y-6">
-      <button onClick={onBack} className="text-gray-400 hover:text-gray-200 text-sm">
+      <Button variant="ghost" size="sm" onClick={onBack}>
         &larr; Back to sessions
-      </button>
+      </Button>
 
-      <div className="space-y-2">
-        <div className="flex items-center gap-3">
-          <h2 className="text-xl font-bold">{session.brief}</h2>
-          <SessionStatusBadge status={currentStatus} />
-        </div>
-        <div className="text-xs text-gray-500 font-mono space-y-1">
-          <p>ID: {session.id}</p>
-          <p>Provider: {session.provider}</p>
-          <p>Created: {new Date(session.createdAt).toLocaleString()}</p>
-          <p>Updated: {new Date(session.updatedAt).toLocaleString()}</p>
-        </div>
-      </div>
+      <Card>
+        <CardContent className="pt-6 space-y-4">
+          <div className="flex items-center gap-3">
+            <h2 className="text-xl font-bold">{session.brief}</h2>
+            <SessionStatusBadge status={currentStatus} />
+          </div>
+          <div className="text-xs text-muted-foreground font-mono space-y-1">
+            <p>ID: {session.id}</p>
+            <p>Provider: {session.provider}</p>
+            <p>Created: {new Date(session.createdAt).toLocaleString()}</p>
+            <p>Updated: {new Date(session.updatedAt).toLocaleString()}</p>
+          </div>
+        </CardContent>
+      </Card>
 
       {isActive && (
         <div className="flex gap-2">
-          <button
+          <Button
+            variant="outline"
+            size="sm"
             onClick={handleComplete}
-            className="bg-green-900 hover:bg-green-800 text-green-200 text-sm px-3 py-1 rounded"
+            className="border-green-800 text-green-400 hover:bg-green-950 hover:text-green-300"
           >
             Complete
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
             onClick={handleCancel}
-            className="bg-red-900 hover:bg-red-800 text-red-200 text-sm px-3 py-1 rounded"
+            className="border-red-800 text-red-400 hover:bg-red-950 hover:text-red-300"
           >
             Cancel
-          </button>
+          </Button>
         </div>
       )}
 
       {currentStatus === "waiting_for_input" && (
         <div>
-          <h3 className="text-sm font-semibold text-gray-300 mb-2">Reply</h3>
+          <h3 className="text-sm font-semibold mb-2">Reply</h3>
           <ReplyForm sessionId={session.id} onReplied={onRefresh} />
         </div>
       )}
 
       <div>
-        <h3 className="text-sm font-semibold text-gray-300 mb-2">Agent Messages</h3>
+        <h3 className="text-sm font-semibold mb-2">Agent Messages</h3>
         <AgentMessageLog messages={messages} />
       </div>
     </div>
