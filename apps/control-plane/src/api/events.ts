@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
+import type { SseEventName } from "@devtask/api-types";
 import type { SessionManager } from "../session-manager.ts";
 import { SessionNotFoundError } from "../session-not-found-error.ts";
 
@@ -20,14 +21,20 @@ export function eventRoutes(manager: SessionManager): Hono {
 
     return streamSSE(c, async (stream) => {
       const session = manager.get(id);
-      await stream.writeSSE({ event: "snapshot", data: JSON.stringify(session) });
+      await stream.writeSSE({
+        event: "snapshot" satisfies SseEventName,
+        data: JSON.stringify(session),
+      });
 
       let closed = false;
       const unsubscribe = manager.subscribe(id, async (event) => {
         if (closed) {
           return;
         }
-        await stream.writeSSE({ event: event.type, data: JSON.stringify(event) });
+        await stream.writeSSE({
+          event: event.type satisfies SseEventName,
+          data: JSON.stringify(event),
+        });
       });
 
       stream.onAbort(() => {
@@ -41,7 +48,7 @@ export function eventRoutes(manager: SessionManager): Hono {
         if (closed) {
           break;
         }
-        await stream.writeSSE({ event: "ping", data: "" });
+        await stream.writeSSE({ event: "ping" satisfies SseEventName, data: "" });
       }
     });
   });

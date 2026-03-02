@@ -1,13 +1,19 @@
 import crypto from "node:crypto";
-import type { Session, SessionStatus, CreateSessionBody } from "@devtask/api-types";
+import type {
+  Session,
+  SessionStatus,
+  CreateSessionBody,
+  CreatedSseEvent,
+  UpdatedSseEvent,
+} from "@devtask/api-types";
 import type { SessionStore } from "./session-store.type.ts";
 import { SessionNotFoundError } from "./session-not-found-error.ts";
 import { InvalidTransitionError } from "./invalid-transition-error.ts";
 import type { SDKMessage } from "@anthropic-ai/claude-agent-sdk";
 
 export type SessionEvent =
-  | { type: "created"; session: Session }
-  | { type: "updated"; session: Session }
+  | CreatedSseEvent
+  | UpdatedSseEvent
   | { type: "deleted"; sessionId: string }
   | { type: "agent_message"; sessionId: string; message: SDKMessage };
 
