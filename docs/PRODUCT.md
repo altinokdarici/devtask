@@ -57,7 +57,7 @@ It’s not fire-and-forget automation. It’s organized, scalable AI collaborati
 5. A pull request is created with a concise summary.
 6. Developers review and merge.
 
-Sessions can pause when blocked and resume later. You stay in control, but you’re no longer stuck in a single AI thread.
+Sessions wait for input when blocked and continue after your reply. You stay in control, but you’re no longer stuck in a single AI thread.
 
 ---
 

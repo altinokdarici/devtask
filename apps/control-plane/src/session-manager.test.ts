@@ -62,7 +62,7 @@ describe("SessionManager", () => {
   });
 
   describe("state transitions", () => {
-    it("queued → provisioning → running → done", async () => {
+    it("queued \u2192 provisioning \u2192 running \u2192 done", async () => {
       const s = await manager.create({ brief: "test" });
       await manager.transition(s.id, "provisioning");
       assert.equal(manager.get(s.id).status, "provisioning");
@@ -70,16 +70,6 @@ describe("SessionManager", () => {
       assert.equal(manager.get(s.id).status, "running");
       await manager.transition(s.id, "done");
       assert.equal(manager.get(s.id).status, "done");
-    });
-
-    it("running → paused → running (resume)", async () => {
-      const s = await manager.create({ brief: "test" });
-      await manager.transition(s.id, "provisioning");
-      await manager.transition(s.id, "running");
-      await manager.pause(s.id);
-      assert.equal(manager.get(s.id).status, "paused");
-      await manager.resume(s.id);
-      assert.equal(manager.get(s.id).status, "running");
     });
 
     it("cancel from any active status", async () => {
@@ -94,13 +84,13 @@ describe("SessionManager", () => {
       assert.equal(manager.get(s2.id).status, "cancelled");
     });
 
-    it("running → waiting_for_input → running → waiting_for_input → done (multi-turn)", async () => {
+    it("running \u2192 waiting_for_input \u2192 running \u2192 waiting_for_input \u2192 done (multi-turn)", async () => {
       const s = await manager.create({ brief: "test" });
       await manager.transition(s.id, "provisioning");
       await manager.transition(s.id, "running");
       await manager.waitForInput(s.id);
       assert.equal(manager.get(s.id).status, "waiting_for_input");
-      await manager.resume(s.id);
+      await manager.transition(s.id, "running");
       assert.equal(manager.get(s.id).status, "running");
       await manager.waitForInput(s.id);
       assert.equal(manager.get(s.id).status, "waiting_for_input");
@@ -108,7 +98,7 @@ describe("SessionManager", () => {
       assert.equal(manager.get(s.id).status, "done");
     });
 
-    it("waiting_for_input → cancelled", async () => {
+    it("waiting_for_input \u2192 cancelled", async () => {
       const s = await manager.create({ brief: "test" });
       await manager.transition(s.id, "provisioning");
       await manager.transition(s.id, "running");
@@ -122,14 +112,11 @@ describe("SessionManager", () => {
       await manager.transition(s.id, "provisioning");
       await manager.transition(s.id, "running");
       await manager.waitForInput(s.id);
-      await assert.rejects(() => manager.pause(s.id), InvalidTransitionError);
       await assert.rejects(() => manager.transition(s.id, "failed"), InvalidTransitionError);
     });
 
     it("rejects invalid transitions", async () => {
       const s = await manager.create({ brief: "test" });
-      await assert.rejects(() => manager.pause(s.id), InvalidTransitionError);
-      await assert.rejects(() => manager.resume(s.id), InvalidTransitionError);
       await assert.rejects(() => manager.transition(s.id, "done"), InvalidTransitionError);
     });
 

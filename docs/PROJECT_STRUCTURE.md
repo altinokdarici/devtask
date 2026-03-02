@@ -41,9 +41,9 @@ cli/
     │   ├── list.ts           # devtask list
     │   ├── show.ts           # devtask show <id>
     │   ├── logs.ts           # devtask logs <id> (SSE stream)
-    │   ├── pause.ts          # devtask pause <id>
-    │   ├── resume.ts         # devtask resume <id>
-    │   └── cancel.ts         # devtask cancel <id>
+    │   ├── cancel.ts         # devtask cancel <id>
+    │   ├── reply.ts          # devtask reply <id> --message "..."
+    │   └── complete.ts       # devtask complete <id>
     └── output/
         ├── table.ts          # session list formatting
         └── log-stream.ts     # render SDK message events to terminal
@@ -60,7 +60,7 @@ control-plane/
 └── src/
     ├── index.ts              # server entry point
     ├── types.ts              # internal types (SessionStore, error classes) + re-exports from api-types
-    ├── session-manager.ts    # create, pause, resume, cancel sessions + pub/sub
+    ├── session-manager.ts    # create, cancel, waiting_for_input sessions + pub/sub
     ├── session-store.ts      # persist/load session state (JSON on disk)
     ├── dispatcher.ts         # assign sessions to nodes, call SDK query(), consume messages
     ├── api/

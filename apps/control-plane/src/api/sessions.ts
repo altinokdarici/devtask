@@ -32,36 +32,6 @@ export function sessionRoutes(manager: SessionManager, dispatcher: Dispatcher): 
     }
   });
 
-  app.post("/:id/pause", async (c) => {
-    try {
-      const session = await manager.pause(c.req.param("id"));
-      return c.json(session);
-    } catch (e) {
-      if (e instanceof SessionNotFoundError) {
-        return c.json({ error: e.message }, 404);
-      }
-      if (e instanceof InvalidTransitionError) {
-        return c.json({ error: e.message }, 409);
-      }
-      throw e;
-    }
-  });
-
-  app.post("/:id/resume", async (c) => {
-    try {
-      const session = await manager.resume(c.req.param("id"));
-      return c.json(session);
-    } catch (e) {
-      if (e instanceof SessionNotFoundError) {
-        return c.json({ error: e.message }, 404);
-      }
-      if (e instanceof InvalidTransitionError) {
-        return c.json({ error: e.message }, 409);
-      }
-      throw e;
-    }
-  });
-
   app.post("/:id/reply", async (c) => {
     try {
       const body = (await c.req.json()) as ReplyBody;

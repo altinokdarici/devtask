@@ -35,14 +35,6 @@ export async function getSession(id: string): Promise<Session> {
   return request<Session>(`/sessions/${id}`);
 }
 
-export async function pauseSession(id: string): Promise<Session> {
-  return request<Session>(`/sessions/${id}/pause`, { method: "POST" });
-}
-
-export async function resumeSession(id: string): Promise<Session> {
-  return request<Session>(`/sessions/${id}/resume`, { method: "POST" });
-}
-
 export async function cancelSession(id: string): Promise<Session> {
   return request<Session>(`/sessions/${id}/cancel`, { method: "POST" });
 }
