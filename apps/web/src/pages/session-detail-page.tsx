@@ -5,5 +5,9 @@ import { sessionDetailRoute } from "../routes.ts";
 export function SessionDetailPage() {
   const [, session] = useLoaderData({ from: sessionDetailRoute.id });
 
-  return <SessionDetail session={session} />;
+  return (
+    <div className="h-full">
+      <SessionDetail session={session} />
+    </div>
+  );
 }

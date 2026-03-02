@@ -1,11 +1,24 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "../api-client.ts";
 import { Input } from "./ui/input.tsx";
 import { Button } from "./ui/button.tsx";
 
-export function ReplyForm({ sessionId, onReplied }: { sessionId: string; onReplied: () => void }) {
+interface ReplyFormProps {
+  sessionId: string;
+  onReplied: () => void;
+  disabled?: boolean;
+}
+
+export function ReplyForm({ sessionId, onReplied, disabled = false }: ReplyFormProps) {
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!disabled && !submitting) {
+      inputRef.current?.focus();
+    }
+  }, [disabled, submitting]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -23,15 +36,21 @@ export function ReplyForm({ sessionId, onReplied }: { sessionId: string; onRepli
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex gap-2">
+    <form onSubmit={handleSubmit} className="flex items-center gap-2">
+      <span className="text-muted-foreground font-mono text-sm select-none">&gt;</span>
       <Input
+        ref={inputRef}
         value={message}
         onChange={(e) => setMessage(e.target.value)}
-        placeholder="Type a reply..."
-        disabled={submitting}
-        className="flex-1"
+        placeholder={disabled ? "Waiting for agent..." : "Type a reply..."}
+        disabled={submitting || disabled}
+        className="flex-1 font-mono"
       />
-      <Button type="submit" variant="secondary" disabled={submitting || !message.trim()}>
+      <Button
+        type="submit"
+        variant="secondary"
+        disabled={submitting || !message.trim() || disabled}
+      >
         Send
       </Button>
     </form>
