@@ -25,6 +25,7 @@ Parallel AI task sessions for developers.
 
 - **No speculative code.** Every type, function, and export in a PR must have a caller in that same PR. Don't introduce code "for later" — add it in the PR that first uses it.
 - **Verify the dev loop early.** The first PR that adds cross-file imports must prove `pnpm dev` (runtime) and `pnpm build` (type-check) both work. Don't wait until later PRs to discover import resolution or config issues.
+- **Prefer pure functions.** Default to stateless, pure functions. Only use classes when you genuinely need encapsulated mutable state (e.g. `SessionManager`, `Dispatcher`). Extract pure helpers for validation, transformation, and formatting logic.
 
 ## Git conventions
 
