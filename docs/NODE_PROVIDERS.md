@@ -140,4 +140,4 @@ Control Plane                          Node
 | stdin/stdout over native transport        | Works behind any NAT. No servers, ports, or relay infra needed. |
 | Provider owns provisioning + spawn        | One interface, no separate transport layer to wire up.          |
 | Node stays alive until agent signals done | Agent owns its full lifecycle including PR reviews.             |
-| SDK session resume                        | Agent picks up where it left off after pause or review idle.    |
+| SDK session resume                        | Agent picks up where it left off after waiting for input.       |

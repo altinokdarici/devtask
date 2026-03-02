@@ -5,8 +5,6 @@ import { createCommand } from "./commands/create.ts";
 import { listCommand } from "./commands/list.ts";
 import { showCommand } from "./commands/show.ts";
 import { logsCommand } from "./commands/logs.ts";
-import { pauseCommand } from "./commands/pause.ts";
-import { resumeCommand } from "./commands/resume.ts";
 import { cancelCommand } from "./commands/cancel.ts";
 import { replyCommand } from "./commands/reply.ts";
 import { completeCommand } from "./commands/complete.ts";
@@ -17,7 +15,7 @@ setBaseUrl(`http://localhost:${config.controlPlane.port}`);
 const main = defineCommand({
   meta: {
     name: "devtask",
-    description: "DevTask CLI — manage parallel AI task sessions",
+    description: "DevTask CLI \u2014 manage parallel AI task sessions",
     version: "0.0.0",
   },
   subCommands: {
@@ -25,8 +23,6 @@ const main = defineCommand({
     list: listCommand,
     show: showCommand,
     logs: logsCommand,
-    pause: pauseCommand,
-    resume: resumeCommand,
     cancel: cancelCommand,
     reply: replyCommand,
     complete: completeCommand,

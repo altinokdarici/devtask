@@ -22,8 +22,7 @@ type Listener = (event: SessionEvent) => void;
 const VALID_TRANSITIONS: Record<string, SessionStatus[]> = {
   queued: ["provisioning", "cancelled"],
   provisioning: ["running", "failed", "cancelled"],
-  running: ["paused", "waiting_for_input", "done", "failed", "cancelled"],
-  paused: ["running", "cancelled"],
+  running: ["waiting_for_input", "done", "failed", "cancelled"],
   waiting_for_input: ["running", "done", "cancelled"],
 };
 
@@ -98,14 +97,6 @@ export class SessionManager {
     await this.store.save(session);
     this.emit(id, { type: "updated", session });
     return session;
-  }
-
-  async pause(id: string): Promise<Session> {
-    return this.transition(id, "paused");
-  }
-
-  async resume(id: string): Promise<Session> {
-    return this.transition(id, "running");
   }
 
   async cancel(id: string): Promise<Session> {
