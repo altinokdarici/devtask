@@ -1,4 +1,4 @@
-import type { Session, CreateSessionBody } from "@devtask/api-types";
+import type { Session, CreateSessionBody, SseEventName } from "@devtask/api-types";
 
 let baseUrl = "http://localhost:4000";
 
@@ -61,7 +61,7 @@ export async function completeSession(id: string): Promise<Session> {
 
 export async function streamEvents(
   id: string,
-  onEvent: (event: string, data: string) => void,
+  onEvent: (event: SseEventName, data: string) => void,
   signal?: AbortSignal,
 ): Promise<void> {
   const res = await fetch(`${baseUrl}/sessions/${id}/events`, { signal });
@@ -98,7 +98,7 @@ export async function streamEvents(
           currentData = line.slice(5).trim();
         } else if (line === "") {
           if (currentData) {
-            onEvent(currentEvent, currentData);
+            onEvent(currentEvent as SseEventName, currentData);
           }
           currentEvent = "message";
           currentData = "";
