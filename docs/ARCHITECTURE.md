@@ -99,7 +99,6 @@ interface Session {
   provider: string;
   nodeId?: string;
   agentSessionId?: string;
-  maxRetries: number;
   createdAt: string;
   updatedAt: string;
 }

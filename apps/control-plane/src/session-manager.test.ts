@@ -29,20 +29,17 @@ describe("SessionManager", () => {
       assert.equal(session.status, "queued");
       assert.equal(session.brief, "test task");
       assert.equal(session.provider, "local");
-      assert.equal(session.maxRetries, 0);
       assert.ok(session.id);
       assert.ok(session.createdAt);
       assert.ok(session.updatedAt);
     });
 
-    it("uses provided provider and maxRetries", async () => {
+    it("uses provided provider", async () => {
       const session = await manager.create({
         brief: "test",
         provider: "docker",
-        maxRetries: 3,
       });
       assert.equal(session.provider, "docker");
-      assert.equal(session.maxRetries, 3);
     });
 
     it("adds session to the list", async () => {
@@ -274,7 +271,6 @@ describe("SessionManager", () => {
         brief: "persisted",
         status: "running",
         provider: "codespace",
-        maxRetries: 0,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };

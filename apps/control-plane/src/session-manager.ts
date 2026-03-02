@@ -46,7 +46,6 @@ export class SessionManager {
       brief: body.brief,
       status: "queued",
       provider: body.provider ?? this.defaultProvider,
-      maxRetries: body.maxRetries ?? 0,
       createdAt: now,
       updatedAt: now,
     };

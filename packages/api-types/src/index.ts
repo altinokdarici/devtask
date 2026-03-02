@@ -15,7 +15,6 @@ export interface Session {
   provider: string;
   nodeId?: string;
   agentSessionId?: string;
-  maxRetries: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -23,7 +22,6 @@ export interface Session {
 export interface CreateSessionBody {
   brief: string;
   provider?: string;
-  maxRetries?: number;
 }
 
 export interface ReplyBody {
