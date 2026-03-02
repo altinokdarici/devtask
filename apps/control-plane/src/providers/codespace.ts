@@ -51,8 +51,8 @@ export function createCodespaceProvider(config: CodespaceProviderConfig): NodePr
         async destroy() {
           try {
             await execFileAsync("gh", ["cs", "delete", "-c", codespaceName, "--force"]);
-          } catch {
-            // Codespace may already be deleted
+          } catch (error) {
+            console.error(`Failed to destroy codespace "${codespaceName}":`, error);
           }
         },
       };
