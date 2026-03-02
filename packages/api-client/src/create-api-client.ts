@@ -12,7 +12,7 @@ export function createApiClient(baseUrl: string) {
 
   return {
     createSession(body: CreateSessionBody): Promise<Session> {
-      return request<Session>("/sessions", {
+      return request<Session>("/api/sessions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -21,19 +21,19 @@ export function createApiClient(baseUrl: string) {
 
     listSessions(projectId?: string): Promise<Session[]> {
       const qs = projectId ? `?projectId=${encodeURIComponent(projectId)}` : "";
-      return request<Session[]>(`/sessions${qs}`);
+      return request<Session[]>(`/api/sessions${qs}`);
     },
 
     getSession(id: string): Promise<Session> {
-      return request<Session>(`/sessions/${id}`);
+      return request<Session>(`/api/sessions/${id}`);
     },
 
     cancelSession(id: string): Promise<Session> {
-      return request<Session>(`/sessions/${id}/cancel`, { method: "POST" });
+      return request<Session>(`/api/sessions/${id}/cancel`, { method: "POST" });
     },
 
     replyToSession(id: string, message: string): Promise<Session> {
-      return request<Session>(`/sessions/${id}/reply`, {
+      return request<Session>(`/api/sessions/${id}/reply`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message }),
@@ -41,11 +41,11 @@ export function createApiClient(baseUrl: string) {
     },
 
     completeSession(id: string): Promise<Session> {
-      return request<Session>(`/sessions/${id}/complete`, { method: "POST" });
+      return request<Session>(`/api/sessions/${id}/complete`, { method: "POST" });
     },
 
     createProject(body: CreateProjectBody): Promise<Project> {
-      return request<Project>("/projects", {
+      return request<Project>("/api/projects", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -53,15 +53,15 @@ export function createApiClient(baseUrl: string) {
     },
 
     listProjects(): Promise<Project[]> {
-      return request<Project[]>("/projects");
+      return request<Project[]>("/api/projects");
     },
 
     getProject(id: string): Promise<Project> {
-      return request<Project>(`/projects/${id}`);
+      return request<Project>(`/api/projects/${id}`);
     },
 
     deleteProject(id: string): Promise<void> {
-      return request<void>(`/projects/${id}`, { method: "DELETE" });
+      return request<void>(`/api/projects/${id}`, { method: "DELETE" });
     },
   };
 }

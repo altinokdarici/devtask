@@ -241,7 +241,7 @@ describe("E2E integration", () => {
 
     const app = new Hono();
     app.get("/health", (c) => c.json({ status: "ok" }));
-    app.route("/", createRouter(manager, projectManager, dispatcher));
+    app.route("/api", createRouter(manager, projectManager, dispatcher));
 
     await new Promise<void>((resolve) => {
       server = serve({ fetch: app.fetch, port: 0 }, (info) => {
@@ -263,7 +263,7 @@ describe("E2E integration", () => {
   });
 
   it("full multi-turn lifecycle: create -> run -> waiting_for_input -> reply -> waiting_for_input -> complete -> done", async () => {
-    const createRes = await fetch(`${baseUrl}/sessions`, {
+    const createRes = await fetch(`${baseUrl}/api/sessions`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ brief: "e2e multi-turn task", projectId }),
@@ -275,7 +275,7 @@ describe("E2E integration", () => {
     await waitForStatus(manager, session.id, "waiting_for_input");
     assert.equal(manager.get(session.id).status, "waiting_for_input");
 
-    const replyRes = await fetch(`${baseUrl}/sessions/${session.id}/reply`, {
+    const replyRes = await fetch(`${baseUrl}/api/sessions/${session.id}/reply`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ message: "continue with more detail" }),
@@ -285,7 +285,7 @@ describe("E2E integration", () => {
     await waitForStatus(manager, session.id, "waiting_for_input");
     assert.equal(manager.get(session.id).status, "waiting_for_input");
 
-    const completeRes = await fetch(`${baseUrl}/sessions/${session.id}/complete`, {
+    const completeRes = await fetch(`${baseUrl}/api/sessions/${session.id}/complete`, {
       method: "POST",
     });
     assert.equal(completeRes.status, 200);
@@ -293,14 +293,14 @@ describe("E2E integration", () => {
   });
 
   it("session list returns created sessions", async () => {
-    const res = await fetch(`${baseUrl}/sessions`);
+    const res = await fetch(`${baseUrl}/api/sessions`);
     assert.equal(res.status, 200);
     const sessions: Session[] = await res.json();
     assert.ok(sessions.length >= 1);
   });
 
   it("create session rejects missing brief", async () => {
-    const res = await fetch(`${baseUrl}/sessions`, {
+    const res = await fetch(`${baseUrl}/api/sessions`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ projectId }),
@@ -309,12 +309,12 @@ describe("E2E integration", () => {
   });
 
   it("get nonexistent session returns 404", async () => {
-    const res = await fetch(`${baseUrl}/sessions/nonexistent`);
+    const res = await fetch(`${baseUrl}/api/sessions/nonexistent`);
     assert.equal(res.status, 404);
   });
 
   it("reply rejects missing message", async () => {
-    const createRes = await fetch(`${baseUrl}/sessions`, {
+    const createRes = await fetch(`${baseUrl}/api/sessions`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ brief: "validation test", projectId }),
@@ -323,7 +323,7 @@ describe("E2E integration", () => {
 
     await waitForStatus(manager, session.id, "waiting_for_input");
 
-    const res = await fetch(`${baseUrl}/sessions/${session.id}/reply`, {
+    const res = await fetch(`${baseUrl}/api/sessions/${session.id}/reply`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({}),

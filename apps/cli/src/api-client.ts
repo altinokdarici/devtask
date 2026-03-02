@@ -36,7 +36,7 @@ export async function streamEvents(
   onEvent: (event: SseEventName, data: string) => void,
   signal?: AbortSignal,
 ): Promise<void> {
-  const res = await fetch(`${baseUrl}/sessions/${id}/events`, { signal });
+  const res = await fetch(`${baseUrl}/api/sessions/${id}/events`, { signal });
   if (!res.ok) {
     const body = await res.text();
     throw new Error(`HTTP ${res.status}: ${body}`);

@@ -4,7 +4,7 @@ export function subscribeToSession(
   id: string,
   onEvent: (event: SessionSseEvent) => void,
 ): () => void {
-  const source = new EventSource(`/sessions/${id}/events`);
+  const source = new EventSource(`/api/sessions/${id}/events`);
 
   source.addEventListener("updated", (e) => {
     onEvent(JSON.parse(e.data));
