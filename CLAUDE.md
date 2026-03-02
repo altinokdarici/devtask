@@ -23,6 +23,7 @@ Parallel AI task sessions for developers.
 
 ## Engineering rules
 
+- **Small files, one export.** Each file should contain one function, class, or type. Use kebab-case file names that match the export (e.g. `create-local-provider.ts` → `createLocalProvider`). Don't pack multiple things into a single file.
 - **No speculative code.** Every type, function, and export in a PR must have a caller in that same PR. Don't introduce code "for later" — add it in the PR that first uses it.
 - **Verify the dev loop early.** The first PR that adds cross-file imports must prove `pnpm dev` (runtime) and `pnpm build` (type-check) both work. Don't wait until later PRs to discover import resolution or config issues.
 
