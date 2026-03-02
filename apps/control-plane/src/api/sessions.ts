@@ -1,8 +1,9 @@
 import { Hono } from "hono";
 import type { SessionManager } from "../session-manager.ts";
 import type { Dispatcher } from "../dispatcher.ts";
-import type { CreateSessionBody } from "../types.ts";
-import { SessionNotFoundError, InvalidTransitionError } from "../types.ts";
+import type { CreateSessionBody } from "@devtask/api-types";
+import { SessionNotFoundError } from "../session-not-found-error.ts";
+import { InvalidTransitionError } from "../invalid-transition-error.ts";
 
 export function sessionRoutes(manager: SessionManager, dispatcher: Dispatcher): Hono {
   const app = new Hono();

@@ -1,8 +1,10 @@
 import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import { SessionManager, type SessionEvent } from "./session-manager.ts";
-import type { Session, SessionStore } from "./types.ts";
-import { SessionNotFoundError, InvalidTransitionError } from "./types.ts";
+import type { Session } from "@devtask/api-types";
+import type { SessionStore } from "./session-store.type.ts";
+import { SessionNotFoundError } from "./session-not-found-error.ts";
+import { InvalidTransitionError } from "./invalid-transition-error.ts";
 
 function createMemoryStore(): SessionStore {
   return {

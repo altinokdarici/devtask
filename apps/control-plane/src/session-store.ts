@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import type { Session, SessionStore } from "./types.ts";
+import type { Session } from "@devtask/api-types";
+import type { SessionStore } from "./session-store.type.ts";
 
 const SESSIONS_DIR = path.join(".devtask", "sessions");
 

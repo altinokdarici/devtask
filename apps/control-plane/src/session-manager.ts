@@ -1,12 +1,8 @@
 import crypto from "node:crypto";
-import {
-  type Session,
-  type SessionStatus,
-  type SessionStore,
-  type CreateSessionBody,
-  SessionNotFoundError,
-  InvalidTransitionError,
-} from "./types.ts";
+import type { Session, SessionStatus, CreateSessionBody } from "@devtask/api-types";
+import type { SessionStore } from "./session-store.type.ts";
+import { SessionNotFoundError } from "./session-not-found-error.ts";
+import { InvalidTransitionError } from "./invalid-transition-error.ts";
 import type { SDKMessage } from "@anthropic-ai/claude-agent-sdk";
 
 export type SessionEvent =
